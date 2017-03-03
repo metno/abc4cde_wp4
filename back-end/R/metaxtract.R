@@ -5,9 +5,13 @@
 ## Function that extracts metadata stored in lists and sublists so that it's easier to search and
 ## organise into tables/spreadsheets. 
 
-metaxtract <- function(x) {
-  ## argument 'x' is input from getGCM, getRCM, testGCM, etc
+metaxtract <- function(x=NULL) {
+  ## argument 'x' is input from getGCMs, getRCMs, testGCM, etc
+  if (is.null(x)) x <- c(getGCMs(),getRCMs())
+  
   gcms <- names(x); n <- length(gcms)
+  print(gcms)
+  
   for (i in 1:n) {
     xx <- x[[gcms[i]]]                       ## Tidier - use xx for the next level in the list structure
     meta <- names(xx); m <- length(meta)
@@ -24,5 +28,7 @@ metaxtract <- function(x) {
       X[i,ii] <- y
     }
   }
+  X -> metaxtract
+  save(metaxtract,file='metaxtract.rda')
   return(X)
 }

@@ -82,3 +82,10 @@ EQC.stations <- function() {
 EQC.commonEOF <- function() {
   ## For visualisation and assessment/comparison of spatio-temporal covariance structure
 }
+
+EQC.ensemblenorm <- function() {
+  ## Compare the grid points to a normal distribution:  the Kolmogorov–Smirnov
+  ## https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test
+}
+
+

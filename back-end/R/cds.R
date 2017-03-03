@@ -30,12 +30,12 @@ getCM <- function(url='https://climexp.knmi.nl/CMIP5/monthly/tas/tas_Amon_ACCESS
 }
 
 ## Specific function to retrieve GCMs
-getGCMs <- function(select=1:3,varid='tas',destfile=rep('CM.nc',3)) {
+getGCMs <- function(select=1:3,varid='tas',destfile=paste(rep('GCM',3),1:3,'.nc',sep='')) {
   ## Get the urls
   url <- cmip5.urls(varid=varid)[select] ## Get the URLs of the 
   ## Set up a list variable to contain all the metadata in sub-lists.
   X <- list()
-  for (i in select) X[[as.character(i)]] <- getCM(url=url[i],destfile=destfile[i])
+  for (i in select) X[[paste('gcm',i,sep='.')]] <- getCM(url=url[i],destfile=destfile[i])
   return(X)
 }
 
@@ -56,17 +56,19 @@ testGCM <- function(select=1:3,varid='tas',path='~/storeB/CMIP5.monthly/rcp45/')
 
 
 ## Specific model to retrieve RCMs
-getRCMs <- function(select=1:3,varid='tas',destfile=rep('CM.nc',3)) {
+getRCMs <- function(select=1:3,varid='tas',destfile=paste(rep('GCM',3),1:3,'.nc',sep='')) {
   ## Get the urls
   url <- paste('https://climexp.knmi.nl/CORDEX/EUR-44/mon/',varid,'/',varid,'_EUR-44_cordex_rcp45_mon_00',select,'.nc',sep='')
   url <- sub('0000','000',url)
   ## Set up a list variable to contain all the metadata
   X <- list()
-  for (i in select) X[[as.character(i)]] <- getCM(url=url[i],destfile=destfile[i])
+  for (i in select) X[[paste('rcm',i,sep='.')]] <- getCM(url=url[i],destfile=destfile[i])
   return(X)
 }
 
-commonEOFS.gcm <- function(select=1:3,varid='tas',destfile=paste(rep('CM',3),1:3,'.nc',sep=''),it=NULL,is=NULL) {
+## Compute the common EOFs for GCMs and save the results for the front-end
+commonEOFS.gcm <- function(select=1:3,varid='tas',destfile=paste(rep('GCM',3),1:3,'.nc',sep=''),
+                           it='annual',is=NULL) {
   getGCMs(select=select,varid=varid,destfile=destfile)
   X <- NULL
   for (fname in destfile) {
@@ -79,6 +81,61 @@ commonEOFS.gcm <- function(select=1:3,varid='tas',destfile=paste(rep('CM',3),1:3
   }
   ceof <- EOF(X)
   plot(ceof)
-  save(ceof,file='ceof.gcm.rda')
+  ## Need to reformat the ceof-object to fit the set-up for the R-shiny app in the front-end.
+  ## Need to reformat the ceof-object to fit the set-up for the R-shiny app in the front-end.
+  x1 <- coredata(ceof); attributes(x1) <- NULL; dim(x1) <- dim(ceof)
+  Z <- list(info='CORDEX runs',eof=ceof,rcm.1=zoo(x1,order.by=index(ceof)))
+  clim <- list(rcm.1=map.field(X,plot=FALSE))
+  rcmnames <- attr(ceof,'model_id')
+  for (i in 1:attr(ceof,'n.apps')) {
+    x1 <- coredata(attr(ceof,paste('appendix.',i,sep='')))
+    #attributes(x1) <- NULL; dim(x1) <- dim(attr(ceof,paste('appendix.',i,sep='')))
+    Z[[paste('rcm.',i+1,sep='')]] <- zoo(x1,order.by=index(paste('appendix.',i,sep='')))
+    rcmnames <- c(rcmnames,attr(paste('appendix.',i,sep=''),'model_id'))
+    #paste('appendix.',i,sep='') <- NULL
+    clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep='')))
+  }
+  attr(Z,'mean') <- clim
+  class(Z) <- c('dsensemble','eof','zoo')
+  ceof <- Z
+  save(ceof,file=paste('ceof.gcm.',it,'.rda',sep=''))
 }
+
+## Compute the common EOFs for RCMs save the results for the front-end
+commonEOFS.rcm <- function(select=1:3,varid='tas',destfile=paste(rep('CM',3),1:3,'.nc',sep=''),
+                           it='annual',is=NULL) {
+  getRCMs(select=select,varid=varid,destfile=destfile)
+  X <- NULL
+  for (fname in destfile) {
+    x <- retrieve(fname)
+    if (!is.null(it)) {
+      if (tolower(it)=='annual') x <- annual(x) else
+        x <- subset(x,it=it,is=is)
+    }
+    if (is.null(X)) X <- x else X <- combine(X,x)
+    
+  }
+  ceof <- EOF(X)
+  plot(ceof)
+  
+  ## Need to reformat the ceof-object to fit the set-up for the R-shiny app in the front-end.
+  x1 <- coredata(ceof); attributes(x1) <- NULL; dim(x1) <- dim(ceof)
+  Z <- list(info='CORDEX runs',eof=ceof,rcm.1=zoo(x1,order.by=index(ceof)))
+  clim <- list(rcm.1=map.field(X,plot=FALSE))
+  rcmnames <- attr(ceof,'model_id')
+  for (i in 1:attr(ceof,'n.apps')) {
+    x1 <- coredata(attr(ceof,paste('appendix.',i,sep='')))
+    #attributes(x1) <- NULL; dim(x1) <- dim(attr(ceof,paste('appendix.',i,sep='')))
+    Z[[paste('rcm.',i+1,sep='')]] <- zoo(x1,order.by=index(paste('appendix.',i,sep='')))
+    rcmnames <- c(rcmnames,attr(paste('appendix.',i,sep=''),'model_id'))
+    #paste('appendix.',i,sep='') <- NULL
+    clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep='')))
+  }
+  attr(Z,'mean') <- clim
+  class(Z) <- c('dsensemble','eof','zoo')
+  ceof <- Z
+  save(ceof,file=paste('ceof.rcm.',it,'.rda',sep=''))
+}
+
+
 

@@ -6,6 +6,7 @@
 \alias{getRCMs}
 \alias{cmip5.urls}
 \alias{commonEOFS.gcm}
+\alias{commonEOFS.rcm}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 %%  ~~function to do ... ~~
@@ -16,28 +17,35 @@
 \usage{
 getCM(url = "https://climexp.knmi.nl/CMIP5/monthly/tas/tas_Amon_ACCESS1-0_historical_000.nc", destfile = "CM.nc", lon = NULL, lat = NULL,force=FALSE)
 getatt(fname)
-getGCMs(select=1:3,varid='tas',destfile=rep('CM.nc',3))
+getGCMs(select=1:3,varid='tas',destfile=destfile=paste(rep('GCM',3),1:3,'.nc',sep=''))
 testGCM(select=1:3,varid='tas',path='~/storeB/CMIP5.monthly/rcp45/')
-getRCMs(select=1:3,varid='tas',destfile=rep('CM.nc',3))
+getRCMs(select=1:3,varid='tas',destfile=destfile=paste(rep('RCM',3),1:3,'.nc',sep=''))
 cmip5.urls(experiment='rcp45',varid='tas',
            url="http://climexp.knmi.nl/CMIP5/monthly/", 
            path=NULL,off=FALSE,force=FALSE,verbose=FALSE)
-           commonEOFS.gcm(select=1:3,varid='tas',destfile=paste(rep('CM',3),1:3,'.nc',sep=''),it=NULL,is=NULL)
+commonEOFS.gcm(select=1:3,varid='tas',destfile=paste(rep('CM',3),1:3,'.nc',sep=''),it='annual',is=NULL)
+commonEOFS.rcm(select=1:3,varid='tas',destfile=paste(rep('CM',3),1:3,'.nc',sep=''),it='annual,is=NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{url}{
+  \item{url}{The URL locating the data files over Internet
 %%     ~~Describe \code{url} here~~
 }
-  \item{destfile}{
+  \item{destfile}{The name of the local destination file whewn downloading
 %%     ~~Describe \code{destfile} here~~
 }
-  \item{lon}{
+  \item{lon}{longitude range to retrieve
 %%     ~~Describe \code{lon} here~~
 }
-  \item{lat}{
+  \item{lat}{latitude range to retrieve
 %%     ~~Describe \code{lat} here~~
 }
+  \item{fname}{file name}
+  \item{select}{index for selecting a subset}
+  \item{varid}{variable name - see \code{link[esd]{retrieve}}}
+  \item{path}{local file path used for a speedier testing}
+  \item{it}{Time index for subsetting - see \code{link[esd]{subset}}}
+  \item{is}{Space index for subsetting - see \code{link[esd]{subset}}}
 }
 \details{
 %%  ~~ If necessary, more details than the description above ~~
