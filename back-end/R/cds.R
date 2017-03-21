@@ -23,19 +23,27 @@ getCM <- function(url='https://climexp.knmi.nl/CMIP5/monthly/tas/tas_Amon_ACCESS
   X <- retrieve(destfile,lon=lon,lat=lat)
   ## Collect information stored in the netCDF header
   cid <- getatt(destfile)
+  ## KMP 2017-03-13: Not all important information is stored in the netCDF header.
+  ##                 Collect info about model (some can also be found in object X)
+  ncid <- nc_open(destfile)
+  model <- ncatt_get(ncid,0)
+  nc_close(ncid)
   ## Extract a time series for the area mean for 
   cid$area.mean <- aggregate.area(X,FUN='mean')
   cid$url <- url
+  cid$model <- model
   return(cid)
 }
 
 ## Specific function to retrieve GCMs
-getGCMs <- function(select=1:3,varid='tas',destfile=paste(rep('GCM',3),1:3,'.nc',sep='')) {
+getGCMs <- function(select=1:3,varid='tas',destfile=NULL) {
+  ## Set destfile
+  if(is.null(destfile)) destfile <- paste(rep('GCM',length(select)),select,'.nc',sep='')
   ## Get the urls
   url <- cmip5.urls(varid=varid)[select] ## Get the URLs of the 
   ## Set up a list variable to contain all the metadata in sub-lists.
   X <- list()
-  for (i in select) X[[paste('gcm',i,sep='.')]] <- getCM(url=url[i],destfile=destfile[i])
+  for (i in seq_along(select)) X[[paste('gcm',select[i],sep='.')]] <- getCM(url=url[i],destfile=destfile[i])
   return(X)
 }
 
@@ -56,19 +64,24 @@ testGCM <- function(select=1:3,varid='tas',path='~/storeB/CMIP5.monthly/rcp45/')
 
 
 ## Specific model to retrieve RCMs
-getRCMs <- function(select=1:3,varid='tas',destfile=paste(rep('GCM',3),1:3,'.nc',sep='')) {
+getRCMs <- function(select=1:3,varid='tas',destfile=NULL) {
+  ## Set destfiles
+  if(is.null(destfile)) destfile <- paste(rep('CM',length(select)),select,'.nc',sep='')
   ## Get the urls
-  url <- paste('https://climexp.knmi.nl/CORDEX/EUR-44/mon/',varid,'/',varid,'_EUR-44_cordex_rcp45_mon_00',select,'.nc',sep='')
-  url <- sub('0000','000',url)
+  ## KMP 2017-03-21: added function cordex.urls in cmip5.download.R
+  url <- cordex.urls()[select]
+  #url <- paste('https://climexp.knmi.nl/CORDEX/EUR-44/mon/',varid,'/',varid,'_EUR-44_cordex_rcp45_mon_00',select,'.nc',sep='')
+  #url <- sub('0000','000',url)
   ## Set up a list variable to contain all the metadata
   X <- list()
-  for (i in select) X[[paste('rcm',i,sep='.')]] <- getCM(url=url[i],destfile=destfile[i])
+  for (i in seq_along(select)) X[[paste('rcm',select[i],sep='.')]] <- getCM(url=url[i],destfile=destfile[i])
   return(X)
 }
 
 ## Compute the common EOFs for GCMs and save the results for the front-end
-commonEOFS.gcm <- function(select=1:3,varid='tas',destfile=paste(rep('GCM',3),1:3,'.nc',sep=''),
+commonEOFS.gcm <- function(select=1:3,varid='tas',destfile=NULL,
                            it='annual',is=NULL) {
+  if(is.null(destfile)) destfile <- paste(rep('GCM',length(select)),select,'.nc',sep='')
   getGCMs(select=select,varid=varid,destfile=destfile)
   X <- NULL
   for (fname in destfile) {
@@ -102,8 +115,9 @@ commonEOFS.gcm <- function(select=1:3,varid='tas',destfile=paste(rep('GCM',3),1:
 }
 
 ## Compute the common EOFs for RCMs save the results for the front-end
-commonEOFS.rcm <- function(select=1:3,varid='tas',destfile=paste(rep('CM',3),1:3,'.nc',sep=''),
+commonEOFS.rcm <- function(select=1:3,varid='tas',destfile=NULL,
                            it='annual',is=NULL) {
+  if(is.null(destfile)) destfile <- paste(rep('CM',length(select)),select,'.nc',sep='')
   getRCMs(select=select,varid=varid,destfile=destfile)
   X <- NULL
   for (fname in destfile) {
