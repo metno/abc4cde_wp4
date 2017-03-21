@@ -3,6 +3,8 @@ import(zoo)
 import(esd)
 # Exports - in alphabetic order
 
+export(cmip5.urls)
+export(cordex.urls)
 export(getGCMs)
 export(getRCMs)
 export(EQC.gcmbias)
