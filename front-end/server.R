@@ -6,20 +6,19 @@
 
 library(shiny)
 library(esd)
+library(DT)
 #if ('RgoogleMaps' %in% installed.packages()) install.packages('RgoogleMaps')
 
 ## Preparations - grid the station data and reduce the size of the data by keeping only
 ## the most important PCA modes.
-
-
-rr <- Y
-rm('Y')
-load('data/quality.rda')
-srt.t2m <- order(loc(Z4[[1]]$pca))
-srt.pre <- order(loc(Z4[[13]]$pca))                 
-t2m.locs <- sort(loc(Z4[[1]]$pca))
-pre.locs <- sort(loc(Z4[[13]]$pca))
-iview <- 0
+# rr <- Y
+# rm('Y')
+# load('data/quality.rda')
+# srt.t2m <- order(loc(Z4[[1]]$pca))
+# srt.pre <- order(loc(Z4[[13]]$pca))                 
+# t2m.locs <- sort(loc(Z4[[1]]$pca))
+# pre.locs <- sort(loc(Z4[[13]]$pca))
+# iview <- 0
 
 ## Estimate the probabilities for trend in observation is within the population trends based on of downscaled results
 ## zoo objects are slow so extract the core data
