@@ -23,14 +23,15 @@ getCM <- function(url='https://climexp.knmi.nl/CMIP5/monthly/tas/tas_Amon_ACCESS
   X <- retrieve(destfile,lon=lon,lat=lat)
   ## Collect information stored in the netCDF header
   cid <- getatt(destfile)
+  ## Extract a time series for the area mean for 
+  cid$area.mean <- aggregate.area(X,FUN='mean')
+  cid$url <- url
+  cid$dates <- paste(range(index(X)),collapse=",")
   ## KMP 2017-03-13: Not all important information is stored in the netCDF header.
   ##                 Collect info about model (some can also be found in object X)
   ncid <- nc_open(destfile)
   model <- ncatt_get(ncid,0)
   nc_close(ncid)
-  ## Extract a time series for the area mean for 
-  cid$area.mean <- aggregate.area(X,FUN='mean')
-  cid$url <- url
   cid$model <- model
   return(cid)
 }
@@ -104,11 +105,12 @@ commonEOFS.gcm <- function(select=1:3,varid='tas',destfile=NULL,
     x1 <- coredata(attr(ceof,paste('appendix.',i,sep='')))
     #attributes(x1) <- NULL; dim(x1) <- dim(attr(ceof,paste('appendix.',i,sep='')))
     Z[[paste('rcm.',i+1,sep='')]] <- zoo(x1,order.by=index(paste('appendix.',i,sep='')))
-    rcmnames <- c(rcmnames,attr(paste('appendix.',i,sep=''),'model_id'))
+    rcmnames <- c(rcmnames,attr(x1,'model_id'))
     #paste('appendix.',i,sep='') <- NULL
     clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep='')))
   }
   attr(Z,'mean') <- clim
+  attr(Z,'model_id') <- rcmnames
   class(Z) <- c('dsensemble','eof','zoo')
   ceof <- Z
   save(ceof,file=paste('ceof.gcm.',it,'.rda',sep=''))
@@ -146,10 +148,109 @@ commonEOFS.rcm <- function(select=1:3,varid='tas',destfile=NULL,
     clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep='')))
   }
   attr(Z,'mean') <- clim
+  attr(Z,'model_id') <- rcmnames
   class(Z) <- c('dsensemble','eof','zoo')
   ceof <- Z
   save(ceof,file=paste('ceof.rcm.',it,'.rda',sep=''))
 }
 
 
+cmip5.urls <- function(experiment='rcp45',varid='tas',
+                       url="http://climexp.knmi.nl/CMIP5/monthly/", 
+                       path=NULL,off=FALSE,force=FALSE,verbose=FALSE) {
+  urlfiles <- "NA"
+  if(verbose) print("cmip5.urls")
+  if(is.null(path)) path <- getwd()
+  for (iexp in experiment) {
+    if(verbose) print(iexp)
+    for (ivar in varid) {
+      if(verbose) print(ivar)
+      ## Loop on the number of experiments
+      for (irun in 0:110) { ## 
+        if(verbose) print(paste(irun))
+        ## Update experiment number
+        if (irun < 10) run.id = paste("00",as.character(irun),sep="")
+        else if (irun < 100) run.id = paste("0",as.character(irun),sep="")
+        else run.id <- as.character(irun)
+        
+        ## Create output directory for the climate experiment
+        path.exp <- file.path(path,experiment[grep(iexp,experiment)],
+                              fsep = .Platform$file.sep)
+        if (!file.exists(path.exp)) dir.create(path.exp)
+        if (verbose) print(path.exp[grep(iexp,experiment)])
+        ## Define the output file
+        destfile <- paste(path.exp,varid[grep(ivar,varid)],sep="/") 
+        destfile <- paste(destfile,"_Amon_ens_",sep="")
+        destfile <- paste(destfile,iexp,sep="")
+        destfile <- paste(destfile,run.id,sep="_")
+        destfile <- paste(destfile,".nc",sep="")
+        
+        if (!file.exists(destfile) | force) {
+          ## Update output filename with attributes:
+          urlfile  <- paste(url,ivar,sep="")             # add var directory
+          urlfile  <- paste(urlfile,ivar,sep="/")        # add v.name
+          urlfile  <- paste(urlfile,"_Amon_ens_",sep="") # add text
+          urlfile  <- paste(urlfile,iexp,sep="")         # add exp.name
+          urlfile  <- paste(urlfile,run.id,sep="_")      # add exp ID number
+          urlfile  <- paste(urlfile,".nc",sep="")        # add file ext
+        }
+        urlfiles <- c(urlfiles,urlfile)
+        if (verbose) print(urlfile)
+      }
+      
+      
+    } # End for   
+  }
+  return(urlfiles[-1])
+}
+
+
+
+cordex.urls <- function(experiment='rcp45',varid='tas',
+                        url="https://climexp.knmi.nl/CORDEX/EUR-44/mon/", 
+                        path=NULL,off=FALSE,force=FALSE,verbose=FALSE) {
+  urlfiles <- "NA"
+  if(verbose) print("cordex.urls")
+  if(is.null(path)) path <- getwd()
+  for (iexp in experiment) {
+    if(verbose) print(iexp)
+    for (ivar in varid) {
+      if(verbose) print(ivar)
+      ## Loop on the number of experiments
+      for (irun in 0:20) { ## 
+        if(verbose) print(paste(irun))
+        ## Update experiment number
+        if (irun < 10) run.id = paste("00",as.character(irun),sep="")
+        else if (irun < 100) run.id = paste("0",as.character(irun),sep="")
+        else run.id <- as.character(irun)
+        
+        ## Create output directory for the climate experiment
+        path.exp <- file.path(path,experiment[grep(iexp,experiment)],
+                              fsep = .Platform$file.sep)
+        if (!file.exists(path.exp)) dir.create(path.exp)
+        if (verbose) print(path.exp[grep(iexp,experiment)])
+        ## Define the output file
+        destfile <- paste(path.exp,varid[grep(ivar,varid)],sep="/") 
+        destfile <- paste(destfile,"EUR-44_cordex",sep="_")
+        destfile <- paste(destfile,iexp,"mon",sep="_")
+        destfile <- paste(destfile,run.id,sep="_")
+        destfile <- paste(destfile,".nc",sep="")
+        
+        if (!file.exists(destfile) | force) {
+          ## Update output filename with attributes:
+          urlfile  <- paste(url,ivar,sep="")             # add var directory
+          urlfile  <- paste(urlfile,ivar,sep="/")        # add v.name
+          urlfile  <- paste(urlfile,"EUR-44_cordex",sep="_") # add text
+          urlfile  <- paste(urlfile,iexp,"mon",sep="_")         # add exp.name
+          urlfile  <- paste(urlfile,run.id,sep="_")      # add exp ID number
+          urlfile  <- paste(urlfile,".nc",sep="")        # add file ext
+        }
+        urlfiles <- c(urlfiles,urlfile)
+        if (verbose) print(urlfile)
+      }
+      
+    } # End for   
+  }
+  return(urlfiles[-1])
+}
 
