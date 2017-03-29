@@ -1,0 +1,9 @@
+Region,Code,Index,West,East,South,North
+British Isles,BI,1,-10,2,50,59
+Iberian Peninsula,IP,2,-10,3,36,44
+France,FR,3,-5,5,44,50
+Mid-Europe,ME,4,2,16,48,50
+Scandinavia,SC,5,5,30,55,70
+Alps,AL,6,5,15,44,48
+Mediterranean,MD,7,3,25,36,44
+Eastern Europe,EA,8,16,30,44,55
