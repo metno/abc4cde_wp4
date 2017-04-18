@@ -92,34 +92,36 @@ commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,
   getGCMs(select=select,varid=varid,destfile=destfile)
   X <- NULL
   for (fname in destfile) {
-    x <- retrieve(fname)
+    if(verbose) print(paste("retrieve",fname))
+    x <- retrieve(fname,verbose=verbose)
     if (!is.null(it)) {
-      if (tolower(it)=='annual') x <- annual(x) else
-                                 x <- subset(x,it=it,is=is)
+      if (tolower(it)=='annual') x <- annual(x,verbose=verbose) else
+                                 x <- subset(x,it=it,is=is,verbose=verbose)
     }
-    if (is.null(X)) X <- x else X <- combine(X,x)
+    if (is.null(X)) X <- x else X <- combine(X,x,verbose=verbose)
   }
-  ceof <- EOF(X)
+  if(verbose) print("Calculate common EOF")
+  ceof <- EOF(X,verbose=verbose)
   plot(ceof)
+  
   ## Need to reformat the ceof-object to fit the set-up for the R-shiny app in the front-end.
+  if(verbose) print("Reformat the common EOF object")
   x1 <- coredata(ceof); attributes(x1) <- NULL; dim(x1) <- dim(ceof)
-  Z <- list(info='CORDEX runs',eof=ceof,rcm.1=zoo(x1,order.by=index(ceof)))
+  Z <- list(info='CMIP5 runs',eof=as.eof(ceof),rcm.1=zoo(x1,order.by=index(ceof)))
   clim <- list(rcm.1=map.field(X,plot=FALSE))
-  rcmnames <- attr(ceof,'model_id')
+  gcmnames <- attr(ceof,'model_id')
   for (i in 1:attr(ceof,'n.apps')) {
-    x1 <- coredata(attr(ceof,paste('appendix.',i,sep='')))
-    #attributes(x1) <- NULL; dim(x1) <- dim(attr(ceof,paste('appendix.',i,sep='')))
-    Z[[paste('rcm.',i+1,sep='')]] <- zoo(x1,order.by=index(paste('appendix.',i,sep='')))
-    rcmnames <- c(rcmnames,attr(x1,'model_id'))
-    #paste('appendix.',i,sep='') <- NULL
+    x1 <- attr(ceof,paste('appendix.',i,sep=''))
+    Z[[paste('rcm.',i+1,sep='')]] <- zoo(coredata(x1),order.by=index(x1))
+    gcmnames <- c(gcmnames,attr(x1,'model_id'))
     clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep='')))
   }
   attr(Z,'mean') <- clim
-  attr(Z,'model_id') <- rcmnames
+  attr(Z,'model_id') <- gcmnames
   class(Z) <- c('dsensemble','eof','list')
   ceof <- Z
-  browser()
   save(ceof,file=paste('ceof.gcm',varid,it,'rda',sep='.'))
+  invisible(ceof)
 }
 
 ## Compute the common EOFs for RCMs save the results for the front-end
@@ -130,35 +132,42 @@ commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,
   getRCMs(select=select,varid=varid,destfile=destfile,verbose=verbose)
   X <- NULL
   for (fname in destfile) {
+    if(verbose) print(paste("retrieve",fname))
     x <- retrieve(fname)
-    browser()
     if (!is.null(it)) {
-      if (tolower(it)=='annual') x <- annual(x) else
-        x <- subset(x,it=it,is=is)
+      if (tolower(it)=='annual') x <- annual(x,verbose=verbose) else
+        x <- subset(x,it=it,is=is,verbose=verbose)
     }
-    if (is.null(X)) X <- x else X <- combine(X,x)
-    
+    if (is.null(X)) X <- x else X <- combine(X,x,verbose=verbose)
   }
-  ceof <- EOF(X)
+  if(verbose) print("Calculate common EOF")
+  ceof <- EOF(X,verbose=verbose)
   plot(ceof)
   
   ## Need to reformat the ceof-object to fit the set-up for the R-shiny app in the front-end.
+  if(verbose) print("Reformat the common EOF object")
   x1 <- coredata(ceof); attributes(x1) <- NULL; dim(x1) <- dim(ceof)
-  Z <- list(info='CORDEX runs',eof=ceof,rcm.1=zoo(x1,order.by=index(ceof)))
+  Z <- list(info='CORDEX runs',eof=as.eof(ceof),rcm.1=zoo(x1,order.by=index(ceof)))
   clim <- list(rcm.1=map.field(X,plot=FALSE))
   rcmnames <- attr(ceof,'model_id')
+  gcmnames <- attr(ceof,'driving_model_id')
+  gcmrip <- attr(ceof,'driving_model_ensemble_member')
   for (i in 1:attr(ceof,'n.apps')) {
     xi <- attr(ceof,paste('appendix.',i,sep=''))
     rcmnames <- c(rcmnames,attr(xi,'model_id'))
+    gcmnames <- c(gcmnames,attr(xi,'driving_model_id'))
+    gcmrip <- c(gcmrip,attr(xi,'driving_model_ensemble_member'))
     Z[[paste('rcm.',i+1,sep='')]] <- zoo(coredata(xi),order.by=index(xi))
     clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep="")))
   }
   attr(Z,'mean') <- clim
   attr(Z,'model_id') <- rcmnames
+  attr(Z,'driving_model_id') <- gcmnames
+  attr(Z,'driving_model_ensemble_members') <- gcmrip
   class(Z) <- c('dsensemble','eof','list')
   ceof <- Z
-  browser()
   save(ceof,file=paste('ceof.rcm',varid,it,'rda',sep='.'))
+  invisible(ceof)
 }
 
 cmip5.urls <- function(experiment='rcp45',varid='tas',
