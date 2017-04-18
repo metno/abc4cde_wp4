@@ -118,7 +118,7 @@ commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,
   attr(Z,'model_id') <- rcmnames
   class(Z) <- c('dsensemble','eof','list')
   ceof <- Z
-  browser()
+  ##browser()
   save(ceof,file=paste('ceof.gcm',varid,it,'rda',sep='.'))
 }
 
@@ -131,7 +131,7 @@ commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,
   X <- NULL
   for (fname in destfile) {
     x <- retrieve(fname)
-    browser()
+    ##browser()
     if (!is.null(it)) {
       if (tolower(it)=='annual') x <- annual(x) else
         x <- subset(x,it=it,is=is)
@@ -157,7 +157,7 @@ commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,
   attr(Z,'model_id') <- rcmnames
   class(Z) <- c('dsensemble','eof','list')
   ceof <- Z
-  browser()
+  ##browser()
   save(ceof,file=paste('ceof.rcm',varid,it,'rda',sep='.'))
 }
 
