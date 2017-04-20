@@ -62,11 +62,12 @@ testGCM <- function(select=1:9,varid='tas',path=NULL,verbose=FALSE) {
   fnames <- list.files(path=path,pattern=varid,full.names = TRUE)
   X <- list()
   for (i in select) {
-    print(fnames[i])
+    if(verbose) print(fnames[i])
     x <- retrieve(fnames[i],varid=varid)
     ncid <- nc_open(fnames[i])
     nc_close(ncid)
     ncid$area.mean <- aggregate.area(x,FUN='mean')
+    ncid$area.sd <- aggregate.area(x,FUN='sd')
     ncid$url <- fnames[i]
     X[[as.character(i)]] <- ncid
   }
@@ -94,7 +95,7 @@ getRCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE) {
 commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,
                            it='annual',is=NULL,verbose=FALSE) {
   if(verbose) print("commonEOFS.gcm")
-  if(is.null(destfile)) destfile <- paste(rep('GCM',length(select)),select,'.nc',sep='')
+  if(is.null(destfile)) destfile <- paste('GCM',select,'.nc',sep='')
   getGCMs(select=select,varid=varid,destfile=destfile)
   X <- NULL
   for (fname in destfile) {
