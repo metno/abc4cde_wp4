@@ -30,8 +30,8 @@ getCM <- function(url=NULL,destfile='CM.nc',lon=NULL,lat=NULL,force=FALSE,verbos
   cid$area.sd <- aggregate.area(X,FUN='sd')
   cid$url <- url
   cid$dates <- paste(range(index(X)),collapse=",")
-  ncid <- nc_open(destfile)
   ## Collect information stored as model attributes
+  ncid <- nc_open(destfile)
   model <- ncatt_get(ncid,0)
   nc_close(ncid)
   cid$model <- model
@@ -48,9 +48,12 @@ getGCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE) {
   url <- cmip5.urls(varid=varid)[select] ## Get the URLs of the 
   ## Set up a list variable to contain all the metadata in sub-lists.
   X <- list()
-  for (i in seq_along(select)) X[[paste('gcm',select[i],sep='.')]] <-
-    getCM(url=url[i],destfile=destfile[i])
-  return(X)
+  for (i in seq_along(select)) {
+    if(verbose) print(paste("Get gcm.",select[i],sep=''))
+    X[[paste('gcm',select[i],sep='.')]] <-
+      getCM(url=url[i],destfile=destfile[i])
+  }
+  invisible(X)
 }
 
 testGCM <- function(select=1:9,varid='tas',path=NULL,verbose=FALSE) {
@@ -79,9 +82,12 @@ getRCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE) {
   url <- cordex.urls()[select]
   ## Set up a list variable to contain all the metadata
   X <- list()
-  for (i in seq_along(select)) X[[paste('rcm',select[i],sep='.')]] <-
-    getCM(url=url[i],destfile=destfile[i])
-  return(X)
+  for (i in seq_along(select)) {
+    if(verbose) print(paste("Get rcm.",select[i],sep=""))
+    X[[paste('rcm',select[i],sep='.')]] <-
+      getCM(url=url[i],destfile=destfile[i])
+  }
+  invisible(X)
 }
 
 ## Compute the common EOFs for GCMs and save the results for the front-end
@@ -122,6 +128,19 @@ commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,
   ceof <- Z
   save(ceof,file=paste('ceof.gcm',varid,it,'rda',sep='.'))
   invisible(ceof)
+}
+
+as.field.commonEOFS <- function(x,verbose=FALSE) {
+  if(verbose) print("as.field.ceof")
+  Y <- as.field(x, anomaly=TRUE, verbose=verbose)
+  Y0 <- Y
+  for(i in 1:length(Y)) {
+    clim.i <- coredata(attr(x,"mean")[[i]])
+    Y.i <- coredata(Y[[i]]) 
+    Y.i <- aperm(apply(Y.i,1,function(x) x + clim.i), c(2,1))
+    coredata(Y[[i]]) <- Y.i
+  }
+  invisible(Y)
 }
 
 ## Compute the common EOFs for RCMs save the results for the front-end
