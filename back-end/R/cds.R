@@ -20,9 +20,9 @@ getCM <- function(url=NULL,destfile='CM.nc',lon=NULL,lat=NULL,force=FALSE,verbos
   ## Retrieves the data
   if(is.null(url)) url <-
     'https://climexp.knmi.nl/CMIP5/monthly/tas/tas_Amon_ACCESS1-0_historical_000.nc'
-  if (!file.exists(destfile)|force) lok <- try(download.file(url=url, destfile=destfile)) 
+  if (!file.exists(destfile)|force) lok <- try(download.file(url=url, destfile=destfile))
   if (inherits(loc,"try-error")) return()
-  X <- retrieve(destfile,lon=lon,lat=lat)
+  X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
   ## Collect information stored in the netCDF header
   cid <- getatt(destfile)
   ## Extract a time series for the area mean for 
@@ -43,15 +43,15 @@ getCM <- function(url=NULL,destfile='CM.nc',lon=NULL,lat=NULL,force=FALSE,verbos
 getGCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE) {
   if(verbose) print("getGCMs")
   ## Set destfile
-  if(is.null(destfile)) destfile <- paste(rep('GCM',length(select)),select,'.nc',sep='')
+  if(is.null(destfile)) destfile <- paste(rep('GCM',length(select)),select,'.',varid,'.nc',sep='')
   ## Get the urls
   url <- cmip5.urls(varid=varid)[select] ## Get the URLs of the 
   ## Set up a list variable to contain all the metadata in sub-lists.
   X <- list()
   for (i in seq_along(select)) {
     if(verbose) print(paste("Get gcm.",select[i],sep=''))
-    X[[paste('gcm',select[i],sep='.')]] <-
-      getCM(url=url[i],destfile=destfile[i])
+    X[[paste('gcm',varid,select[i],sep='.')]] <-
+      getCM(url=url[i],destfile=destfile[i],verbose=verbose)
   }
   invisible(X)
 }
@@ -78,15 +78,14 @@ testGCM <- function(select=1:9,varid='tas',path=NULL,verbose=FALSE) {
 getRCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE) {
   if(verbose) print("getRCMs")
   ## Set destfiles
-  if(is.null(destfile)) destfile <- paste(rep('CM',length(select)),select,'.nc',sep='')
+  if(is.null(destfile)) destfile <- paste('CM',select,'.',varid,'.nc',sep='')
   ## Get the urls
-  url <- cordex.urls()[select]
+  url <- cordex.urls(varid=varid)[select]
   ## Set up a list variable to contain all the metadata
   X <- list()
   for (i in seq_along(select)) {
     if(verbose) print(paste("Get rcm.",select[i],sep=""))
-    X[[paste('rcm',select[i],sep='.')]] <-
-      getCM(url=url[i],destfile=destfile[i])
+    X[[paste('rcm',varid,select[i],sep='.')]] <- getCM(url=url[i],destfile=destfile[i],verbose=verbose)
   }
   invisible(X)
 }
@@ -95,7 +94,7 @@ getRCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE) {
 commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,
                            it='annual',is=NULL,verbose=FALSE) {
   if(verbose) print("commonEOFS.gcm")
-  if(is.null(destfile)) destfile <- paste('GCM',select,'.nc',sep='')
+  if(is.null(destfile)) destfile <- paste('GCM',select,'.',varid,'.nc',sep='')
   getGCMs(select=select,varid=varid,destfile=destfile)
   X <- NULL
   for (fname in destfile) {
@@ -117,38 +116,27 @@ commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,
   Z <- list(info='CMIP5 runs',eof=as.eof(ceof),rcm.1=zoo(x1,order.by=index(ceof)))
   clim <- list(rcm.1=map.field(X,plot=FALSE))
   gcmnames <- attr(ceof,'model_id')
+  gcmrip <- attr(ceof,'parent_experiment_rip')
   for (i in 1:attr(ceof,'n.apps')) {
     x1 <- attr(ceof,paste('appendix.',i,sep=''))
     Z[[paste('rcm.',i+1,sep='')]] <- zoo(coredata(x1),order.by=index(x1))
     gcmnames <- c(gcmnames,attr(x1,'model_id'))
+    gcmrip <- c(gcmrip,attr(x1,'parent_experiment_rip'))
     clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep='')))
   }
   attr(Z,'mean') <- clim
-  attr(Z,'model_id') <- gcmnames
+  attr(Z,'model_id') <- list(gcm=gcmnames,gcm_rip=gcmrip)
   class(Z) <- c('dsensemble','eof','list')
   ceof <- Z
   save(ceof,file=paste('ceof.gcm',varid,it,'rda',sep='.'))
   invisible(ceof)
 }
 
-as.field.commonEOFS <- function(x,verbose=FALSE) {
-  if(verbose) print("as.field.ceof")
-  Y <- as.field(x, anomaly=TRUE, verbose=verbose)
-  Y0 <- Y
-  for(i in 1:length(Y)) {
-    clim.i <- coredata(attr(x,"mean")[[i]])
-    Y.i <- coredata(Y[[i]]) 
-    Y.i <- aperm(apply(Y.i,1,function(x) x + clim.i), c(2,1))
-    coredata(Y[[i]]) <- Y.i
-  }
-  invisible(Y)
-}
-
 ## Compute the common EOFs for RCMs save the results for the front-end
 commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,
                            it='annual',is=NULL,verbose=FALSE) {
   if(verbose) print("commonEOFS.rcm")
-  if(is.null(destfile)) destfile <- paste(rep('CM',length(select)),select,'.nc',sep='')
+  if(is.null(destfile)) destfile <- paste(rep('CM',length(select)),select,'.',varid,'.nc',sep='')
   getRCMs(select=select,varid=varid,destfile=destfile,verbose=verbose)
   X <- NULL
   for (fname in destfile) {
@@ -181,13 +169,25 @@ commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,
     clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep="")))
   }
   attr(Z,'mean') <- clim
-  attr(Z,'model_id') <- rcmnames
-  attr(Z,'driving_model_id') <- gcmnames
-  attr(Z,'driving_model_ensemble_members') <- gcmrip
+  attr(Z,'model_id') <- list(rcm=rcmnames,gcm=gcmnames,gcm_rip=gcmrip)
   class(Z) <- c('dsensemble','eof','list')
   ceof <- Z
   save(ceof,file=paste('ceof.rcm',varid,it,'rda',sep='.'))
   invisible(ceof)
+}
+
+
+as.field.commonEOFS <- function(x,verbose=FALSE) {
+  if(verbose) print("as.field.ceof")
+  Y <- as.field(x, anomaly=TRUE, verbose=verbose)
+  Y0 <- Y
+  for(i in 1:length(Y)) {
+    clim.i <- coredata(attr(x,"mean")[[i]])
+    Y.i <- coredata(Y[[i]]) 
+    Y.i <- aperm(apply(Y.i,1,function(x) x + clim.i), c(2,1))
+    coredata(Y[[i]]) <- Y.i
+  }
+  invisible(Y)
 }
 
 cmip5.urls <- function(experiment='rcp45',varid='tas',
@@ -302,7 +302,7 @@ metaextract <- function(x=NULL, verbose=FALSE) {
     } else if(grepl("cordex",tolower(xx$project_id))) {
       yi <- metaextract.cordex(xx,verbose=verbose)
     }
-    print(i)
+    if(verbose) print(i)
     if(i==1) {
       Y <- matrix(NA,ncol=ncol(yi),nrow=n)
       colnames(Y) <- colnames(yi)
@@ -320,8 +320,8 @@ metaextract <- function(x=NULL, verbose=FALSE) {
       Y <- Y.new
     }
   }
-  Y -> metaextract
-  save(metaextract,file='metaextract.rda')
+  Y -> meta
+  save(meta,file='metaextract.rda')
   return(Y)
 }
 
@@ -357,10 +357,10 @@ metaextract.cmip <- function(x=NULL, verbose=FALSE) {
       if(!is.null(xx$dim$lat$units)) lat.unit <- xx$dim$lat$units
       if(!is.null(xx$dim$lon$units)) lon.unit <- xx$dim$lon$units
     }
-    for(mi in c("url","filename","dates")) {
+    for(mi in c("url","filename","dates","frequency")) {
       if(!is.null(xx[[mi]])) eval(parse(text=paste(mi," <- xx$",mi,sep="")))
     }
-    for(mi in c("project_id","experiment_id","frequency","creation_date","tracking_id")) {
+    for(mi in c("project_id","experiment_id","creation_date","tracking_id")) {
       if(!is.null(xx$model[[mi]])) eval(parse(text=paste(mi," <- xx$model$",mi,sep="")))
     }
     if(!is.null(xx$model$model_id)) gcm <- xx$model$model_id
@@ -370,11 +370,11 @@ metaextract.cmip <- function(x=NULL, verbose=FALSE) {
     mx <- data.frame(project_id=project_id, url=url, filename=filename,
                      dim=paste(dim,collapse=","), dates=dates, var=paste(var,collapse=","),
                      longname=paste(longname,collapse=","), unit=paste(vunit,collapse=","),
-                     var_id=paste(vid,collapse=","), 
+                     #var_id=paste(vid,collapse=","), 
                      resolution=res, lon=lon.rng, lon_unit=lon.unit, lat=lat.rng, lat_unit=lat.unit,
                      experiment_id=experiment_id, frequency=frequency, 
-                     creation_date=creation_date, tracking_id=tracking_id,
-                     gcm=gcm, gcm_rip=gcm.rip, gcm_version=gcm.v, gcm_realm=gcm.realm)
+                     creation_date=creation_date, #tracking_id=tracking_id,
+                     gcm=gcm, gcm_rip=gcm.rip)#, gcm_version=gcm.v, gcm_realm=gcm.realm)
     meta <- names(mx)
     m <- length(meta)
     if (i==1) {
@@ -407,9 +407,9 @@ metaextract.cordex <- function(x=NULL, verbose=FALSE) {
     res <- NA; lon.rng <- NA; lon.unit <- NA; lat.rng <- NA; lat.unit <- NA
     experiment_id <- NA; frequency <- NA; creation_date <- NA; tracking_id <- NA
     gcm <- NA; gcm.rip <- NA; gcm.v <- NA; gcm.realm <- NA
-    if(!is.null(xx$dim)) dim <- paste(names(xx$dim),collapse=",")
+    if(!is.null(xx$dim)) dim <- paste(names(xx$dim),collapse=",")[!grepl("bnds",names(xx$var))]
     if(!is.null(names(xx$var))) {
-      var <- names(xx$var)#[!grepl("time",names(xx$var))]
+      var <- names(xx$var)[!grepl("bnds",names(xx$var))]
       if(!is.null(xx$var[[1]]$longname)) longname <- sapply(var, function(x) xx$var[[x]]$longname)
       if(!is.null(xx$var[[1]]$units)) vunit <- sapply(var, function(x) xx$var[[x]]$units)
       if(!is.null(xx$var[[1]]$id$id)) vid <- sapply(var, function(x) xx$var[[x]]$id$id)
@@ -438,11 +438,11 @@ metaextract.cordex <- function(x=NULL, verbose=FALSE) {
     mx <- data.frame(project_id=project_id, url=url, filename=filename,
                      dim=paste(dim,collapse=","), dates=dates, var=paste(var,collapse=","),
                      longname=paste(longname,collapse=","), unit=paste(vunit,collapse=","),
-                     var_id=paste(vid,collapse=","), 
+                     #var_id=paste(vid,collapse=","), 
                      resolution=res, lon=lon.rng, lon_unit=lon.unit, lat=lat.rng, lat_unit=lat.unit,
                      experiment_id=experiment_id, frequency=frequency, 
-                     creation_date=creation_date, tracking_id=tracking_id,
-                     gcm=gcm, gcm_rip=gcm.rip, rcm=rcm, rcm_domain=rcm.domain, rcm_version=rcm.v)
+                     creation_date=creation_date, #tracking_id=tracking_id,
+                     gcm=gcm, gcm_rip=gcm.rip, rcm=rcm)#, rcm_domain=rcm.domain, rcm_version=rcm.v)
     meta <- names(mx)
     m <- length(meta)
     if (i==1) {
