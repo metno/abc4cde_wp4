@@ -113,7 +113,8 @@ commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,
   ## Need to reformat the ceof-object to fit the set-up for the R-shiny app in the front-end.
   if(verbose) print("Reformat the common EOF object")
   x1 <- coredata(ceof); attributes(x1) <- NULL; dim(x1) <- dim(ceof)
-  Z <- list(info='CMIP5 runs',eof=as.eof(ceof),rcm.1=zoo(x1,order.by=index(ceof)))
+  eof <- as.eof(ceof); attr(eof,"standard.error") <- NULL
+  Z <- list(info='CMIP5 runs',eof=eof,rcm.1=zoo(x1,order.by=index(ceof)))
   clim <- list(rcm.1=map.field(X,plot=FALSE))
   gcmnames <- attr(ceof,'model_id')
   gcmrip <- attr(ceof,'parent_experiment_rip')
@@ -155,7 +156,8 @@ commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,
   ## Need to reformat the ceof-object to fit the set-up for the R-shiny app in the front-end.
   if(verbose) print("Reformat the common EOF object")
   x1 <- coredata(ceof); attributes(x1) <- NULL; dim(x1) <- dim(ceof)
-  Z <- list(info='CORDEX runs',eof=as.eof(ceof),rcm.1=zoo(x1,order.by=index(ceof)))
+  eof <- as.eof(ceof); attr(eof,"standard.error") <- NULL
+  Z <- list(info='CORDEX runs',eof=eof,rcm.1=zoo(x1,order.by=index(ceof)))
   clim <- list(rcm.1=map.field(X,plot=FALSE))
   rcmnames <- attr(ceof,'model_id')
   gcmnames <- attr(ceof,'driving_model_id')
