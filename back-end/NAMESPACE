@@ -1,12 +1,17 @@
 import(ncdf4)
 import(zoo)
 import(esd)
+import(rgdal)
+import(raster)
 # Exports - in alphabetic order
 
 export(cmip5.urls)
 export(cordex.urls)
+export(getCRU)
+export(getERA)
 export(getGCMs)
 export(getRCMs)
+export(gen.mask.srex)
 export(commonEOFS.gcm)
 export(commonEOFS.rcm)
 export(as.field.commonEOFS

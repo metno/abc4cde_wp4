@@ -6,12 +6,148 @@ require(esd) ## This code builds on the esd package: https://github.com/metno/es
 
 ##  Function of an R-package that retrieves data files with CMIP or CORDEX results
 
+get.srex.region <- function(region=NULL){
+  require(rgdal)
+  home <- system("echo $HOME",intern=T)
+  shape.srex <- readOGR(paste(home,"abc4cde_wp4/back-end/data/SREX_regions/referenceRegions.shp",sep="/"),verbose=F)
+  if(is.null(region)){
+    print("Region names in alphabetical order and the corresponding label to be used when selecting the region:")
+    print(data.frame(NAME=gsub("\\[[^\\]]*\\]", "", levels(shape.srex$NAME), perl=TRUE),
+                        LABEL=levels(shape.srex$LAB)))
+    return()
+  }
+  if(!is.character(region))return(shape.srex[round(region),])
+  return(shape.srex[shape.srex$LAB==region,])
+}
+
+#Create a raster mask for the selected SREX sub-region from the CMIP5 netcdf file.
+gen.mask.srex <- function(infile=NULL, region=NULL, ind=F, inverse=F, mask.values=1){
+  require(raster)
+  polygon <- get.srex.region(region=region)
+  r <- raster(infile)
+  r <- setValues(r,NA)
+  extent(r) <- c(-180,180,-90,90)
+  indices <- extract(r,polygon,cellnumbers=T)[[1]][,1]
+  if(extent(polygon)[2]>180){
+    extent(r) <- c(180,540,-90,90)
+  }
+  indices <- sort(c(indices,extract(r,polygon,cellnumbers=T)[[1]][,1]))
+  if(inverse){
+    tmp <- seq(1,length(getValues(r)))
+    indices <- tmp[which(is.na(match(tmp,indices)))]
+  }
+  mask <- r
+  extent(mask) <- c(0,360,-90,90)
+  mask[indices] <- mask.values
+  if(ind)return(indices)
+  return(mask)
+}
+
 getatt <- function(fname) {
   ## Reads and extracts the attribute information in a netCDF files and stores this in a list object## 
   ## This is part of the information stored in the metadatabase
   ncid <- nc_open(fname)
   nc_close(ncid)
   return(ncid)
+}
+
+python.getEra <- function(start,end,variable,steps,type,stream,outfile){
+  script <- "python ~/abc4cde_wp4/back-end/python/getMonthlyERA.py"
+  system.command <- paste(script," -f ",start," -l ",end," -v ",variable,
+                          " -s ",steps," -t ",type," -r ",stream," -o ",outfile, sep="")
+  system(system.command,wait=T)
+}
+
+#Apply a set of cdo commands on a grib/netcdf file.
+#Several commands can be piped.
+cdo.command <- function(commands,input,separators,pipe=F,infile,outfile){
+  cdo.coms <- array()
+  for(i in 1:length(separators)){
+    cdo.coms[i]  <- paste(commands[i],input[i],sep=separators[i])
+  }
+  system.command <- paste("cdo",paste(cdo.coms,collapse=" "),infile,outfile,sep=" ")
+  system(system.command,wait=T)
+}
+
+#Unzip a gz package
+gunzip.cru <- function(filename){
+  system.command <- paste("gunzip",filename)
+  system(system.command,wait=T)
+}
+
+#Retrieve monthly data for 2m temperature and precipitation from the ECMWF public repository.
+#The use of this function requires that the ECMWF key and python libraries are installed.
+#See instructions in https://software.ecmwf.int/wiki/display/WEBAPI/Access+ECMWF+Public+Datasets
+#The function also requires that cdo is installed on the operating computer.
+getERA <- function(variable,start=1979,end=2016,griddes="../back-end/data/125to25.txt",destfile=NULL){
+  if(any(match(c("tas","tmp","temp","temperature","t2m"),variable,nomatch=0))){
+    variable <- "167.128"
+    stream <- "moda"
+    steps <- "0"
+    type <- "an"
+    commands <- c("-f","-copy","-remapcon","-chname")
+    input <- c("nc","",griddes,"2t,t2m")
+    seps <- c(" ","",",",",")
+  }else if(any(match(c("pre","prc","prec","precipitation","pr"),variable,nomatch=0))){
+    variable <- "228.128"
+    stream <- "mdfa"
+    steps <- "12-24/24-36" # Select the 24 and 36h 12-hour long forecast in order to reduce the spin-up effect.
+    type <- "fc"
+    commands <- c("-f","-copy","-qqmonsum","-remapcon")
+    input <- c("nc","","",griddes)
+    seps <- c(" ","","",",")
+  }
+  if(is.null(destfile)) destfile <- paste("era-interim_monthly_",paste(start,end,sep="-"),"_",variable,".grib",sep="")
+  if(!file.exists(destfile))python.getEra(start, end, variable, steps, type, stream, destfile)
+  outfile <- paste(gsub('.{5}$', '',destfile),"2.5deg",'nc',sep=".")
+  if(!file.exists(outfile)) cdo.command(commands,input,seps,pipe=T,infile=destfile,outfile=outfile)
+  X <- retrieve(outfile)
+  cid <- getatt(outfile)
+  cid$area.mean <- aggregate.area(X,FUN='mean')
+  cid$area.sd <- aggregate.area(X,FUN='sd')
+  cid$url <- NA
+  cid$dates <- paste(range(index(X)),collapse=",")
+  ncid <- nc_open(outfile)
+  model <- ncatt_get(ncid,0)
+  nc_close(ncid)
+  cid$model <- model
+  cid$project_id <- cid$model$project_id
+  return(cid)
+}
+
+#A test function to retrieve CRU data from CEDA databases.
+getCRU <- function(username,passwd,variable="tmp",version="4.00",griddes="../back-end/data/125to25.txt",destfile=NULL,time.resol=NULL){
+  if(any(match(c("tas","tmp","temp","temperature","t2m"),variable))){
+    variable <- "tmp"
+  }else if(any(match(c("pre","prc","prec","precipitation","pr"),variable))){
+    variable <- "pre"
+  }
+  cert <- paste(username,passwd,sep=":")
+  url <- paste("ftp.ceda.ac.uk/badc/cru/data/cru_ts",paste("cru_ts",version,sep="_"),"data",variable,sep="/")
+  if(is.null(destfile)) destfile <- paste(paste("cru_ts",version,sep=""),"1901.2015",variable,"dat.nc.gz",sep=".")
+  if(!file.exists(destfile))try(download.file(url=paste(paste("ftp://",paste(cert,url,sep="@"),sep=""),destfile,sep="/"),
+                                              destfile=destfile, mode="wb"))
+  gunzip.cru(destfile)
+  destfile <- paste(gsub('.{5}$', '',destfile),"nc",sep="")
+  outfile <- paste(gsub('.{5}$', '',destfile),"2.5deg.",'nc',sep="")
+  if(!file.exists(outfile)){
+    commands <- c("-f","-copy","-remapcon")
+    input <- c("nc","",griddes)
+    seps <- c(" ","",",")
+    cdo.command(commands,input,seps,infile=destfile,outfile=outfile) 
+  }
+  X <- retrieve(outfile)
+  cid <- getatt(outfile)
+  cid$area.mean <- aggregate.area(X,FUN='mean')
+  cid$area.sd <- aggregate.area(X,FUN='sd')
+  cid$url <- NA
+  cid$dates <- paste(range(index(X)),collapse=",")
+  ncid <- nc_open(outfile)
+  model <- ncatt_get(ncid,0)
+  nc_close(ncid)
+  cid$model <- model
+  cid$project_id <- cid$model$project_id
+  return(cid)
 }
 
 ## Generic function to retrieve climate model (CM) file from the KNMI ClimateExplorer
@@ -40,7 +176,7 @@ getCM <- function(url=NULL,destfile='CM.nc',lon=NULL,lat=NULL,force=FALSE,verbos
 }
 
 ## Specific function to retrieve GCMs
-getGCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE) {
+getGCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE,region=NULL) {
   if(verbose) print("getGCMs")
   ## Set destfile
   if(is.null(destfile)) destfile <- paste(rep('GCM',length(select)),select,'.',varid,'.nc',sep='')
@@ -75,7 +211,7 @@ testGCM <- function(select=1:9,varid='tas',path=NULL,verbose=FALSE) {
 }
 
 ## Specific model to retrieve RCMs
-getRCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE) {
+getRCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE,region=NULL) {
   if(verbose) print("getRCMs")
   ## Set destfiles
   if(is.null(destfile)) destfile <- paste('CM',select,'.',varid,'.nc',sep='')
