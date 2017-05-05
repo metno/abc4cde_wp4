@@ -1,6 +1,8 @@
 import(ncdf4)
 import(zoo)
 import(esd)
+import(rgdal)
+import(raster)
 
 # Exports - in alphabetic order
 export(cdo.mean)
