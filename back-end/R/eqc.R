@@ -90,15 +90,17 @@ EQC.ensemblenorm <- function() {
 
 compare.fields <- function(x,y=NULL,lplot=FALSE,type=c("correlation","rmsd"),
                            filename=NULL,verbose=FALSE,...) {
-  if(verbose) print("compare.field")
+  if(verbose) print("compare.fields")
   if(!is.null(y) & inherits(x,"field") & inherits(y,"field")) {
     if(verbose) print("Calculate comparative statistics")
     x <- subset(x,is=list(lon=range(lon(y)),lat=range(lat(y))))
     y <- subset(y,is=list(lon=range(lon(x)),lat=range(lat(x))))
     if(inherits(x,"annual") & !inherits(y,"annual")) y <- annual(y)
     if(inherits(y,"annual") & !inherits(x,"annual")) x <- annual(x)
-    if(inherits(x,"seasonal") & !inherits(y,"seasonual")) y <- subset(as.4seasons(y),it=season(x)[1])
-    if(inherits(y,"seasonal") & !inherits(x,"seasonual")) x <- subset(as.4seasons(x),it=season(y)[1])
+    if(inherits(x,"seasonal") & !inherits(y,"seasonal")) y <- subset(as.4seasons(y),it=season(x)[1])
+    if(inherits(y,"seasonal") & !inherits(x,"seasonal")) x <- subset(as.4seasons(x),it=season(y)[1])
+    x <- subset(x,it=index(x) %in% index(y))
+    y <- subset(y,it=index(y) %in% index(x))
     if(verbose) print("Calculate correlation")
     r <- corfield(x,y,plot=FALSE)
     attr(r,"variable") <- "correlation"

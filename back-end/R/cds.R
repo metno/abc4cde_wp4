@@ -91,7 +91,7 @@ getRCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE) {
 }
 
 ## Compute the common EOFs for GCMs and save the results for the front-end
-commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,
+commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NULL,
                            it='annual',is=NULL,verbose=FALSE) {
   if(verbose) print("commonEOFS.gcm")
   if(is.null(destfile)) destfile <- paste('GCM',select,'.',varid,'.nc',sep='')
@@ -101,7 +101,7 @@ commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,
     if(verbose) print(paste("retrieve",fname))
     x <- retrieve(fname,verbose=verbose)
     if (!is.null(it)) {
-      if (tolower(it)=='annual') x <- annual(x,verbose=verbose) else
+      if (tolower(it)=='annual') x <- annual(subset(x,is=is),verbose=verbose) else
                                  x <- subset(x,it=it,is=is,verbose=verbose)
     }
     if (is.null(X)) X <- x else X <- combine(X,x,verbose=verbose)
@@ -129,12 +129,18 @@ commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,
   attr(Z,'model_id') <- list(gcm=gcmnames,gcm_rip=gcmrip)
   class(Z) <- c('dsensemble','eof','list')
   ceof <- Z
-  save(ceof,file=paste('ceof.gcm',varid,it,'rda',sep='.'))
+  if(is.null(destfile.ceof)) {
+    destfile.ceof <- paste('ceof.gcm',varid,it,sep=".")
+    if(!is.null(is)) fname <- paste(destfile.ceof,".",paste(round(is$lon),collapse="-"),"E.",
+                                    paste(round(is$lat),collapse="-"),"N",sep="")
+    destfile.ceof <- paste(destfile.ceof,"rda",sep='.')
+  }
+  save(ceof,file=destfile.ceof)
   invisible(ceof)
 }
 
 ## Compute the common EOFs for RCMs save the results for the front-end
-commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,
+commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NULL,
                            it='annual',is=NULL,verbose=FALSE) {
   if(verbose) print("commonEOFS.rcm")
   if(is.null(destfile)) destfile <- paste(rep('CM',length(select)),select,'.',varid,'.nc',sep='')
@@ -144,7 +150,7 @@ commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,
     if(verbose) print(paste("retrieve",fname))
     x <- retrieve(fname)
     if (!is.null(it)) {
-      if (tolower(it)=='annual') x <- annual(x,verbose=verbose) else
+      if (tolower(it)=='annual') x <- annual(subset(x,is=is),verbose=verbose) else
         x <- subset(x,it=it,is=is,verbose=verbose)
     }
     if (is.null(X)) X <- x else X <- combine(X,x,verbose=verbose)
@@ -174,7 +180,13 @@ commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,
   attr(Z,'model_id') <- list(rcm=rcmnames,gcm=gcmnames,gcm_rip=gcmrip)
   class(Z) <- c('dsensemble','eof','list')
   ceof <- Z
-  save(ceof,file=paste('ceof.rcm',varid,it,'rda',sep='.'))
+  if(is.null(destfile.ceof)) {
+    destfile.ceof <- paste('ceof.rcm',varid,it,sep=".")
+    if(!is.null(is)) destfile.ceof <- paste(destfile.ceof,".",paste(round(is$lon),collapse="-"),"E.",
+                                    paste(round(is$lat),collapse="-"),"N",sep="")
+    destfile.ceof <- paste(destfile.ceof,"rda",sep='.')
+  }
+  save(ceof,file=destfile.ceof)
   invisible(ceof)
 }
 
