@@ -1,5 +1,5 @@
 ## ABC4CDE/DEMC - R-script for prototype tool WP4
-## andreas.doblerd@met.no  Oslo, Norway, 2017-05-16
+## andreas.dobler@met.no  Oslo, Norway, 2017-05-16
 ##
 
 ##  Function of an R-package that retrieves metadata from files located on OPeNDAP servers.

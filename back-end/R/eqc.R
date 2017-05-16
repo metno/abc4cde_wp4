@@ -1,5 +1,5 @@
 ## ABC4CDE/DEMC - R-script for prototype tool WP4
-## andreas.doblerd@met.no  Oslo, Norway, 2017-05-16
+## andreas.dobler@met.no  Oslo, Norway, 2017-05-16
 ##
 ## An example script, calculating correlation and standard deviations for a list of (local) files
 ## and save the information to an Rdata file

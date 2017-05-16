@@ -1,5 +1,5 @@
 ## ABC4CDE/DEMC - R-script for prototype tool WP4
-## andreas.doblerd@met.no  Oslo, Norway, 2017-05-16
+## andreas.dobler@met.no  Oslo, Norway, 2017-05-16
 ##
 ## An example script, colleting metadata from files located on OPeNDAP servers
 ## and save/add the information to an Rdata file
