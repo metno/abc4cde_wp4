@@ -2,42 +2,123 @@
 ## Rasmus.Benestad@met.no  Oslo, Norway, 2017-02-14
 ##
 
+#Helper function to find files linux environment (add Windows counterpart)
+find.file <- function(filename){
+  command <- paste("find $HOME -name",filename,sep=" ")
+  fullpath <- system(command,intern=T)
+  return(fullpath)
+}
 
-get.srex.region <- function(region=NULL){
-  require(rgdal)
+#apply mask to a zoo object by setting values outside the mask to NA
+mask.zoo <- function(zoo.object,mask){
+  mask <- flip(mask,direction='y')
+  zoo.object[,which(is.na(getValues(mask)))] <- NA
+  return(zoo.object)
+}
+
+#Search and read a shapefile
+get.shapefile <- function(filename=NULL,with.path=F){
+  fullname <- filename
+  if(!with.path){
+    fullname <- find.file(filename)
+  }
+  readOGR(fullname,verbose=F)
+}
+
+#Apply a set of cdo commands on a grib/netcdf file.
+#Several commands can be piped.
+cdo.command <- function(commands,input,infile,outfile){
+  cdo.coms <- array()
+  separators <- array(" ",dim=length(commands))
+  separators[which(is.na(match(input,"")))] <- ","
+  for(i in 1:length(separators)){
+    cdo.coms[i]  <- paste(commands[i],input[i],sep=separators[i])
+  }
+  system.command <- paste("cdo",paste(cdo.coms,collapse=" "),infile,outfile,sep=" ")
+  system(system.command,wait=T)
+}
+
+#Unzip a gz package
+gunzip <- function(filename){
+  system.command <- paste("gunzip",filename)
+  system(system.command,wait=T)
+}
+
+
+#Get grid boxes belonging to a SREX region and calculate some basic statistics for it.
+get.srex.region <- function(destfile,region=NULL,print.srex=F,verbose=F){ 
   home <- system("echo $HOME",intern=T)
-  shape.srex <- readOGR(paste(home,"abc4cde_wp4/back-end/data/SREX_regions/referenceRegions.shp",sep="/"),verbose=F)
+  shape <-  get.shapefile("referenceRegions.shp")
+  X <- retrieve(destfile,lon=NULL,lat=NULL,verbose=verbose)
+  srex <- list()
   if(is.null(region)){
+    for (i in 1:length(levels(shape$LAB))){
+      polygon <- shape[i,]
+      mask <- gen.mask.srex(destfile=destfile, mask=polygon, ind=F, inverse=F, mask.values=1)
+      if(verbose){
+        if(i==1){
+          plot(shape)
+        }
+        plot.mask <- mask
+        extent(plot.mask) <- c(-180,180,-90,90)
+        projection(plot.mask) <- projection(shape)
+        plot(plot.mask,col=rainbow(100, alpha=0.35)[sample(1:100,1)],legend=F,add=T)
+      }
+      name <- levels(shape$NAME)[i]
+      X.region <- mask.zoo(X,mask)
+      srex[[name]]$name <- name
+      srex[[name]]$label <- levels(shape$LAB)[i]
+      srex[[name]]$area.mean <- aggregate.area(X.region,FUN="mean",na.rm=T)
+      srex[[name]]$area.sd <- aggregate.area(X.region,FUN="sd",na.rm=T)
+    }  
+  }else{
+    polygon <- shape[levels(shape$LAB)==region,]
+    mask <- gen.mask.srex(destfile=destfile, mask=polygon, ind=F, inverse=F, mask.values=1)
+   if(verbose){
+      plot(shape)
+      plot.mask <- mask
+      extent(plot.mask) <- c(-180,180,-90,90)
+      projection(plot.mask) <- projection(shape)
+      plot(plot.mask,col=rainbow(100, alpha=0.35)[sample(1:100,1)],legend=F,add=T)
+   }
+    name <- levels(shape$NAME)[i]
+    X.region <- mask.zoo(X,mask)
+    srex[[name]]$name <- name
+    srex[[name]]$label <- levels(shape$LAB)[i]
+    srex[[name]]$area.mean <- aggregate.area(X.region,FUN="mean",na.rm=T)
+    srex[[name]]$area.sd <- aggregate.area(X.region,FUN="sd",na.rm=T) 
+  }
+
+  if(print.srex){
     print("Region names in alphabetical order and the corresponding label to be used when selecting the region:")
-    print(data.frame(NAME=gsub("\\[[^\\]]*\\]", "", levels(shape.srex$NAME), perl=TRUE),
-                        LABEL=levels(shape.srex$LAB)))
+    print(data.frame(NAME=gsub("\\[[^\\]]*\\]", "", levels(shape$NAME), perl=TRUE),
+                        LABEL=levels(shape$LAB)))
     return()
   }
-  if(!is.character(region))return(shape.srex[round(region),])
-  return(shape.srex[shape.srex$LAB==region,])
+  return(srex)
 }
 
 #Create a raster mask for the selected SREX sub-region from the CMIP5 netcdf file.
-gen.mask.srex <- function(infile=NULL, region=NULL, ind=F, inverse=F, mask.values=1){
-  require(raster)
-  polygon <- get.srex.region(region=region)
-  r <- raster(infile)
+gen.mask.srex <- function(destfile, mask=NULL, ind=F, inverse=F, mask.values=1){
+  print(destfile)
+  r <- raster(destfile)
   r <- setValues(r,NA)
-  extent(r) <- c(-180,180,-90,90)
-  indices <- extract(r,polygon,cellnumbers=T)[[1]][,1]
-  if(extent(polygon)[2]>180){
+  extent.r <- extent(r)
+  if(extent.r[2]==360) extent(r) <- c(-180,180,-90,90)
+  indices <- extract(r,mask,cellnumbers=T)[[1]][,1]
+  if(extent(mask)[2]>180){
     extent(r) <- c(180,540,-90,90)
   }
-  indices <- sort(c(indices,extract(r,polygon,cellnumbers=T)[[1]][,1]))
+  indices <- sort(c(indices,extract(r,mask,cellnumbers=T)[[1]][,1]))
   if(inverse){
     tmp <- seq(1,length(getValues(r)))
     indices <- tmp[which(is.na(match(tmp,indices)))]
   }
-  mask <- r
-  extent(mask) <- c(0,360,-90,90)
-  mask[indices] <- mask.values
+  mask.raster <- r
+  extent(mask.raster) <- c(0,360,-90,90)
+  mask.raster[indices] <- mask.values
   if(ind)return(indices)
-  return(mask)
+  return(mask.raster)
 }
 
 getatt <- function(fname) {
@@ -48,6 +129,7 @@ getatt <- function(fname) {
   return(ncid)
 }
 
+#Call to a python script which downloads data from the public ECMWF data server
 python.getEra <- function(start,end,variable,steps,type,stream,outfile){
   script <- "python ~/abc4cde_wp4/back-end/python/getMonthlyERA.py"
   system.command <- paste(script," -f ",start," -l ",end," -v ",variable,
@@ -55,49 +137,34 @@ python.getEra <- function(start,end,variable,steps,type,stream,outfile){
   system(system.command,wait=T)
 }
 
-#Apply a set of cdo commands on a grib/netcdf file.
-#Several commands can be piped.
-cdo.command <- function(commands,input,separators,pipe=F,infile,outfile){
-  cdo.coms <- array()
-  for(i in 1:length(separators)){
-    cdo.coms[i]  <- paste(commands[i],input[i],sep=separators[i])
-  }
-  system.command <- paste("cdo",paste(cdo.coms,collapse=" "),infile,outfile,sep=" ")
-  system(system.command,wait=T)
-}
-
-#Unzip a gz package
-gunzip.cru <- function(filename){
-  system.command <- paste("gunzip",filename)
-  system(system.command,wait=T)
-}
-
 #Retrieve monthly data for 2m temperature and precipitation from the ECMWF public repository.
-#The use of this function requires that the ECMWF key and python libraries are installed.
+#The use of this function requires that the ECMWF key and python libraries are installed on the machine.
 #See instructions in https://software.ecmwf.int/wiki/display/WEBAPI/Access+ECMWF+Public+Datasets
 #The function also requires that cdo is installed on the operating computer.
-getERA <- function(variable,start=1979,end=2016,griddes="../back-end/data/125to25.txt",destfile=NULL){
-  if(any(match(c("tas","tmp","temp","temperature","t2m"),variable,nomatch=0))){
-    variable <- "167.128"
+getERA <- function(variable.name,start=1979,end=2016,griddes="cmip_1.25deg_to_2.5deg.txt",destfile=NULL){
+  griddes <- find.file(griddes)
+  if(any(match(c("tas","tmp","temp","temperature","t2m"),variable.name,nomatch=0))){
+    varID<- "167.128"
     stream <- "moda"
     steps <- "0"
     type <- "an"
-    commands <- c("-f","-copy","-remapcon","-chname")
-    input <- c("nc","",griddes,"2t,t2m")
-    seps <- c(" ","",",",",")
-  }else if(any(match(c("pre","prc","prec","precipitation","pr"),variable,nomatch=0))){
-    variable <- "228.128"
+    commands <- c("-f","nc","-copy","-remapcon","-chname")
+    input <- c("","","",griddes,"2t,tas")
+#    seps <- c(" ","",",",",")
+  }else if(any(match(c("pre","prc","prec","precipitation","pr"),variable.name,nomatch=0))){
+    varID<- "228.128"
     stream <- "mdfa"
     steps <- "12-24/24-36" # Select the 24 and 36h 12-hour long forecast in order to reduce the spin-up effect.
     type <- "fc"
-    commands <- c("-f","-copy","-qqmonsum","-remapcon")
-    input <- c("nc","","",griddes)
-    seps <- c(" ","","",",")
+    commands <- c("-f","nc","-copy","-monsum","-remapcon","-chname")
+    input <- c("","","","",griddes,"2t,tas")
+#    seps <- c(" ","","",",",",")
   }
-  if(is.null(destfile)) destfile <- paste("era-interim_monthly_",paste(start,end,sep="-"),"_",variable,".grib",sep="")
-  if(!file.exists(destfile))python.getEra(start, end, variable, steps, type, stream, destfile)
+  griddes <- find.file(griddes)
+  if(is.null(destfile)) destfile <- paste("era-interim_monthly_",paste(start,end,sep="-"),"_",variable.name,".grib",sep="")
+  if(!file.exists(destfile))python.getEra(start, end, varID, steps, type, stream, destfile)
   outfile <- paste(gsub('.{5}$', '',destfile),"2.5deg",'nc',sep=".")
-  if(!file.exists(outfile)) cdo.command(commands,input,seps,pipe=T,infile=destfile,outfile=outfile)
+  if(!file.exists(outfile)) cdo.command(commands,input,infile=destfile,outfile=outfile)
   X <- retrieve(outfile)
   cid <- getatt(outfile)
   cid$area.mean <- aggregate.area(X,FUN='mean')
@@ -109,11 +176,12 @@ getERA <- function(variable,start=1979,end=2016,griddes="../back-end/data/125to2
   nc_close(ncid)
   cid$model <- model
   cid$project_id <- cid$model$project_id
+  cid$srex <- get.srex.region(outfile,region=NULL,print.srex=F,verbose=F)
   return(cid)
 }
 
 #A test function to retrieve CRU data from CEDA databases.
-getCRU <- function(username,passwd,variable="tmp",version="4.00",griddes="../back-end/data/125to25.txt",destfile=NULL,time.resol=NULL){
+getCRU <- function(username,passwd,variable="tmp",version="4.00",griddes="cmip_1.25deg_to_2.5deg.txt",destfile=NULL,time.resol=NULL){
   if(any(match(c("tas","tmp","temp","temperature","t2m"),variable))){
     variable <- "tmp"
   }else if(any(match(c("pre","prc","prec","precipitation","pr"),variable))){
@@ -124,10 +192,11 @@ getCRU <- function(username,passwd,variable="tmp",version="4.00",griddes="../bac
   if(is.null(destfile)) destfile <- paste(paste("cru_ts",version,sep=""),"1901.2015",variable,"dat.nc.gz",sep=".")
   if(!file.exists(destfile))try(download.file(url=paste(paste("ftp://",paste(cert,url,sep="@"),sep=""),destfile,sep="/"),
                                               destfile=destfile, mode="wb"))
-  gunzip.cru(destfile)
+  gunzip(destfile)
   destfile <- paste(gsub('.{5}$', '',destfile),"nc",sep="")
   outfile <- paste(gsub('.{5}$', '',destfile),"2.5deg.",'nc',sep="")
   if(!file.exists(outfile)){
+    griddes <- find.file(griddes)
     commands <- c("-f","-copy","-remapcon")
     input <- c("nc","",griddes)
     seps <- c(" ","",",")
@@ -144,6 +213,70 @@ getCRU <- function(username,passwd,variable="tmp",version="4.00",griddes="../bac
   nc_close(ncid)
   cid$model <- model
   cid$project_id <- cid$model$project_id
+  return(cid)
+}
+
+#Get monthly CFSR data and interpolate it to common 2.5 degree grid.
+getCFSR <- function(variable="t2m",destfile=NULL,lon=NULL,lat=NULL,verbose=T,griddes="cmip_1.25deg_to_2.5deg.txt"){
+  url.path <- "https://climexp.knmi.nl/CFSR"
+  griddes <- find.file(griddes)
+  if(variable=="tas"){
+    filename <- "cfsr_tmp2m.nc"
+    commands <- c("-f","-copy","-remapcon","-monavg","-chname")
+    input <- c("nc","",griddes,"","TMP_2maboveground,t2m")
+    seps <- c(" ","",","," ",",")
+  }else if(variable=="pr"){
+    filename <- "cfsr_prate.nc"
+    commands <- c("-f","-copy","-remapcon","-monavg","-chname")
+    input <- c("nc","",griddes,"","PRATE_surface,Pr")
+    seps <- c(" ","",",","",",")
+  }
+  if(!file.exists(filename))download.file(paste(url.path,filename,sep="/"),destfile=filename)
+  if(is.null(destfile)) destfile <- paste(sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),"mon.nc",sep="_")
+  if(!file.exists(destfile)) cdo.command(commands,input,seps,pipe=T,infile=filename,outfile=destfile)
+  X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
+  cid <- getatt(destfile) 
+  cid$url <- paste(url.path,filename,sep="/")
+  cid$area.mean <- aggregate.area(X,FUN='mean',na.rm=T)
+  cid$area.sd <- aggregate.area(X,FUN='sd',na.rm=T)
+  ncid <- nc_open(destfile)
+  model <- ncatt_get(ncid,0)
+  nc_close(ncid)
+  cid$model <- model
+  cid$srex <- get.srex.region(destfile,region=NULL,print.srex=F,verbose=F)
+  #  file.remove(filename)
+  return(cid)
+}
+
+#Get daily EOBS data and convert it to monthly averages
+getEOBS <- function(variable="tas", destfile=NULL, resolution="0.50", version="14"){
+  url.path <- "http://www.ecad.eu/download/ensembles/data/Grid_0.50deg_reg"
+  if(variable=="tas"){
+    filename <- "tg_0.50deg_reg_v14.0.nc.gz"
+  }else if(variable=="pr"){
+    filename <- "rr_0.50deg_reg_v14.0.nc.gz"
+  }else{
+    return("Not implemented yet!")
+  }
+  if(!file.exist(filename)) download.file(paste(url.path,filename,sep="/"),destfile=filename)
+  gunzip(filename)
+  filename <- sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE)
+  if(is.null(destfile)) destfile <- paste(sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),"mon.nc",sep="_")
+  commands <- c("-f","-copy","-monavg")
+  input <- c("nc","","")
+  seps <- c(" ","","")
+  if(!file.exist(destfile)) cdo.command(commands,input,seps,pipe=F,infile=filename,outfile=destfile)
+  #  file.remove(filename)
+  X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
+  cid <- getatt(destfile) 
+  cid$url <- paste(url.path,filename,sep="/")
+  cid$area.mean <- aggregate.area(X,FUN='mean',na.rm=T)
+  cid$area.sd <- aggregate.area(X,FUN='sd',na.rm=T)
+  ncid <- nc_open(destfile)
+  model <- ncatt_get(ncid,0)
+  nc_close(ncid)
+  cid$model <- model
+  #  file.remove(filename)
   return(cid)
 }
 
@@ -164,9 +297,9 @@ getCM <- function(url=NULL,destfile='CM.nc',lon=NULL,lat=NULL,force=FALSE,verbos
   }
   ## Collect information stored in the netCDF header
   cid <- getatt(destfile)
-  ## Extract a time series for the area mean for 
-  cid$area.mean <- aggregate.area(X,FUN='mean')
-  cid$area.sd <- aggregate.area(X,FUN='sd')
+  ## Extract a time series for the area mean 
+  cid$area.mean <- aggregate.area(X,FUN='mean',na.rm=T)
+  cid$area.sd <- aggregate.area(X,FUN='sd',na.rm=T)
   cid$url <- url
   cid$dates <- paste(range(index(X)),collapse=",")
   ## Collect information stored as model attributes
@@ -178,19 +311,19 @@ getCM <- function(url=NULL,destfile='CM.nc',lon=NULL,lat=NULL,force=FALSE,verbos
   return(cid)
 }
 
-## Specific function to retrieve GCMs
-getGCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE,region=NULL) {
-  if(verbose) print("getGCMs")
+getGCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE,get.srex=TRUE,region=NULL,print.srex=FALSE){
+  if(verbose) print("getGCMs SREX regions")
   ## Set destfile
   if(is.null(destfile)) destfile <- paste(rep('GCM',length(select)),select,'.',varid,'.nc',sep='')
-  ## Get the urls
   url <- cmip5.urls(varid=varid)[select] ## Get the URLs of the 
   ## Set up a list variable to contain all the metadata in sub-lists.
   X <- list()
   for (i in seq_along(select)) {
     if(verbose) print(paste("Get gcm.",select[i],sep=''))
     X[[paste('gcm',varid,select[i],sep='.')]] <-
-      getCM(url=url[i],destfile=destfile[i],verbose=verbose)
+        getCM(url=url[i],destfile=destfile[i],verbose=verbose)
+    if(get.srex)X[[paste('gcm',varid,select[i],sep='.')]]$srex <-
+        get.srex.region(destfile=destfile[i],region=region,print.srex=print.srex,verbose=verbose)
   }
   invisible(X)
 }
@@ -228,6 +361,7 @@ getRCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE,region=NU
   }
   invisible(X)
 }
+
 
 cmip5.urls <- function(experiment='rcp45',varid='tas',
                        url="http://climexp.knmi.nl/CMIP5/monthly/",#path=NULL,
