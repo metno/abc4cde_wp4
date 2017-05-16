@@ -33,7 +33,7 @@ get.shapefile <- function(filename=NULL,with.path=F){
 
 #Apply a set of cdo commands on a grib/netcdf file.
 #Several commands can be piped.
-cdo.command <- function(commands,input,infile,outfile){
+cdo.command <- function(commands,input,infile,outfile,intern=F){
   cdo.coms <- array()
   separators <- array(" ",dim=length(commands))
   separators[which(is.na(match(input,"")))] <- ","
@@ -41,7 +41,13 @@ cdo.command <- function(commands,input,infile,outfile){
     cdo.coms[i]  <- paste(commands[i],input[i],sep=separators[i])
   }
   system.command <- paste("cdo",paste(cdo.coms,collapse=" "),infile,outfile,sep=" ")
-  system(system.command,wait=T)
+
+  if(intern){
+    output <- system(system.command,wait=T,intern=T)
+    return(output)
+  }else{
+    system(system.command,wait=T)
+  }
 }
 
 #Unzip a gz package
@@ -105,17 +111,17 @@ get.srex.region <- function(destfile,region=NULL,print.srex=F,verbose=F){
 }
 
 #Create a raster mask for the selected SREX sub-region from the CMIP5 netcdf file.
-gen.mask.srex <- function(destfile, mask=NULL, ind=F, inverse=F, mask.values=1){
+gen.mask.srex <- function(destfile, mask.polygon=NULL, ind=F, inverse=F, mask.values=1){
   print(destfile)
   r <- raster(destfile)
   r <- setValues(r,NA)
   extent.r <- extent(r)
   if(extent.r[2]==360) extent(r) <- c(-180,180,-90,90)
-  indices <- extract(r,mask,cellnumbers=T)[[1]][,1]
-  if(extent(mask)[2]>180){
+  indices <- extract(r,mask.polygon,cellnumbers=T)[[1]][,1]
+  if(extent(mask.polygon)[2]>180){
     extent(r) <- c(180,540,-90,90)
+    indices <- sort(c(indices,extract(r,mask.polygon,cellnumbers=T)[[1]][,1]))
   }
-  indices <- sort(c(indices,extract(r,mask,cellnumbers=T)[[1]][,1]))
   if(inverse){
     tmp <- seq(1,length(getValues(r)))
     indices <- tmp[which(is.na(match(tmp,indices)))]
@@ -156,7 +162,6 @@ getERA <- function(variable.name,start=1979,end=2016,griddes="cmip_1.25deg_to_2.
     type <- "an"
     commands <- c("-f","nc","-copy","-remapcon","-chname")
     input <- c("","","",griddes,"2t,tas")
-#    seps <- c(" ","",",",",")
   }else if(any(match(c("pre","prc","prec","precipitation","pr"),variable.name,nomatch=0))){
     varID<- "228.128"
     stream <- "mdfa"
@@ -164,7 +169,6 @@ getERA <- function(variable.name,start=1979,end=2016,griddes="cmip_1.25deg_to_2.
     type <- "fc"
     commands <- c("-f","nc","-copy","-monsum","-remapcon","-chname")
     input <- c("","","","",griddes,"2t,tas")
-#    seps <- c(" ","","",",",",")
   }
   griddes <- find.file(griddes)
   if(is.null(destfile)) destfile <- paste("era-interim_monthly_",paste(start,end,sep="-"),"_",variable.name,".grib",sep="")
@@ -203,10 +207,9 @@ getCRU <- function(username,passwd,variable="tmp",version="4.00",griddes="cmip_1
   outfile <- paste(gsub('.{5}$', '',destfile),"2.5deg.",'nc',sep="")
   if(!file.exists(outfile)){
     griddes <- find.file(griddes)
-    commands <- c("-f","-copy","-remapcon")
-    input <- c("nc","",griddes)
-    seps <- c(" ","",",")
-    cdo.command(commands,input,seps,infile=destfile,outfile=outfile) 
+    commands <- c("-f","nc","-copy","-remapcon")
+    input <- c("","","",griddes)
+    cdo.command(commands,input,infile=destfile,outfile=outfile) 
   }
   X <- retrieve(outfile)
   cid <- getatt(outfile)
@@ -223,23 +226,21 @@ getCRU <- function(username,passwd,variable="tmp",version="4.00",griddes="cmip_1
 }
 
 #Get monthly CFSR data and interpolate it to common 2.5 degree grid.
-getCFSR <- function(variable="t2m",destfile=NULL,lon=NULL,lat=NULL,verbose=T,griddes="cmip_1.25deg_to_2.5deg.txt"){
+getCFSR <- function(variable="tas",destfile=NULL,lon=NULL,lat=NULL,verbose=T,griddes="cmip_1.25deg_to_2.5deg.txt"){
   url.path <- "https://climexp.knmi.nl/CFSR"
   griddes <- find.file(griddes)
   if(variable=="tas"){
     filename <- "cfsr_tmp2m.nc"
-    commands <- c("-f","-copy","-remapcon","-monavg","-chname")
-    input <- c("nc","",griddes,"","TMP_2maboveground,t2m")
-    seps <- c(" ","",","," ",",")
+    commands <- c("-f","nc","-copy","-remapcon","-monavg","-chname")
+    input <- c("","","",griddes,"","TMP_2maboveground,tas")
   }else if(variable=="pr"){
     filename <- "cfsr_prate.nc"
-    commands <- c("-f","-copy","-remapcon","-monavg","-chname")
-    input <- c("nc","",griddes,"","PRATE_surface,Pr")
-    seps <- c(" ","",",","",",")
+    commands <- c("-f","nc","-copy","-remapcon","-monavg","-chname")
+    input <- c("","","",griddes,"","PRATE_surface,pr")
   }
-  if(!file.exists(filename))download.file(paste(url.path,filename,sep="/"),destfile=filename)
+  if(!file.exists(filename)) download.file(paste(url.path,filename,sep="/"),destfile=filename)
   if(is.null(destfile)) destfile <- paste(sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),"mon.nc",sep="_")
-  if(!file.exists(destfile)) cdo.command(commands,input,seps,pipe=T,infile=filename,outfile=destfile)
+  if(!file.exists(destfile)) cdo.command(commands,input,infile=filename,outfile=destfile)
   X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
   cid <- getatt(destfile) 
   cid$url <- paste(url.path,filename,sep="/")
@@ -250,11 +251,11 @@ getCFSR <- function(variable="t2m",destfile=NULL,lon=NULL,lat=NULL,verbose=T,gri
   nc_close(ncid)
   cid$model <- model
   cid$srex <- get.srex.region(destfile,region=NULL,print.srex=F,verbose=F)
-  #  file.remove(filename)
   return(cid)
 }
 
-#Get daily EOBS data and convert it to monthly averages
+#Get daily EOBS data and convert it to monthly averages. Version and resolution
+#selection not implemented yet.
 getEOBS <- function(variable="tas", destfile=NULL, resolution="0.50", version="14"){
   url.path <- "http://www.ecad.eu/download/ensembles/data/Grid_0.50deg_reg"
   if(variable=="tas"){
@@ -268,11 +269,9 @@ getEOBS <- function(variable="tas", destfile=NULL, resolution="0.50", version="1
   gunzip(filename)
   filename <- sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE)
   if(is.null(destfile)) destfile <- paste(sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),"mon.nc",sep="_")
-  commands <- c("-f","-copy","-monavg")
-  input <- c("nc","","")
-  seps <- c(" ","","")
-  if(!file.exist(destfile)) cdo.command(commands,input,seps,pipe=F,infile=filename,outfile=destfile)
-  #  file.remove(filename)
+  commands <- c("-f","nc","-copy","-monavg")
+  input <- c("","","","")
+  if(!file.exist(destfile)) cdo.command(commands,input,infile=filename,outfile=destfile)
   X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
   cid <- getatt(destfile) 
   cid$url <- paste(url.path,filename,sep="/")
@@ -282,7 +281,6 @@ getEOBS <- function(variable="tas", destfile=NULL, resolution="0.50", version="1
   model <- ncatt_get(ncid,0)
   nc_close(ncid)
   cid$model <- model
-  #  file.remove(filename)
   return(cid)
 }
 
