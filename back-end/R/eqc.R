@@ -1,165 +1,83 @@
-## ABC4CDE/DEMC - R-script for prototype tool WP4 Evaluation and Quality Control (EQC)
-## Rasmus Benestad. Blindern, Oslo 2016-10-17
+## ABC4CDE/DEMC - R-script for prototype tool WP4
+## andreas.doblerd@met.no  Oslo, Norway, 2017-05-16
+##
+## An example script, calculating correlation and standard deviations for a list of (local) files
+## and save the information to an Rdata file
 
-## A cloolection of R-scripts which will be used in a prototype tool that runs regularly in the background
-## and collects metadata and performs evaluation of the data. 
+library(ncdf4)
 
-## Evaluation of CMIP ensemble based on NCEP/NCAR 1, ERAINT, and MERRA reanalyses
-## Surface temperature. Rank-test for grid-points values
+#Define lists with data URLs
+CORDEXList <- c("http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_CNRM-CERFACS-CNRM-CM5_historical_r1i1p1_CLMcom-CCLM4-8-17_v1_day_19500101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_CNRM-CERFACS-CNRM-CM5_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_ICHEC-EC-EARTH_historical_r12i1p1_CLMcom-CCLM4-8-17_v1_day_19491201-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_ICHEC-EC-EARTH_historical_r3i1p1_DMI-HIRHAM5_v1_day_19510101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_ICHEC-EC-EARTH_historical_r12i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_ICHEC-EC-EARTH_historical_r1i1p1_KNMI-RACMO22E_v1_day_19500101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_MOHC-HadGEM2-ES_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051230.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_MPI-M-MPI-ESM-LR_historical_r1i1p1_CLMcom-CCLM4-8-17_v1_day_19491201-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_CNRM-CERFACS-CNRM-CM5_historical_r1i1p1_CLMcom-CCLM4-8-17_v1_day_19500101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_CNRM-CERFACS-CNRM-CM5_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_ICHEC-EC-EARTH_historical_r12i1p1_CLMcom-CCLM4-8-17_v1_day_19491201-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_ICHEC-EC-EARTH_historical_r3i1p1_DMI-HIRHAM5_v1_day_19510101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_ICHEC-EC-EARTH_historical_r12i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_ICHEC-EC-EARTH_historical_r1i1p1_KNMI-RACMO22E_v1_day_19500101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_MOHC-HadGEM2-ES_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051230.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_MPI-M-MPI-ESM-LR_historical_r1i1p1_CLMcom-CCLM4-8-17_v1_day_19491201-20051231.nc")
 
-testrank <- function(x,m,N,d1) {
-  ## Find the rank number of m observations
-  ## Need to unwrap the dimensions
-  dim(x) <- c(N,d1)
-  number <- apply(x,1,function(x) order(x)[1:m])
-  return(c(number))
+
+CORDEXAdjList <- c("http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/adjusted/tas/hist/tasAdjust_EUR-11_ICHEC-EC-EARTH_rcp45_r12i1p1_SMHI-RCA4_v1-METNO-QMAP-MESAN-1989-2010_day_19700101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/adjusted/pr/hist/prAdjust_EUR-11_ICHEC-EC-EARTH_rcp45_r12i1p1_SMHI-RCA4_v1-METNO-QMAP-MESAN-1989-2010_day_19700101-20051231.nc")
+
+#Make a model selection list
+ML <- c(CORDEXAdjList[1], CORDEXList[1], CORDEXList[2], CORDEXAdjList[2], CORDEXList[17])
+
+#Function to calculate standard deviation (as defined in taylor.diagram() in the plottrix package)
+SD <- function(x, subn) {
+  meanx <- mean(x, na.rm = TRUE)
+  devx <- x - meanx
+  ssd <- sqrt(sum(devx * devx, na.rm = TRUE)/(length(x[!is.na(x)]) -
+                                                subn))
+  return(ssd)
 }
 
+#Get spatial fields of reference and model data
+nc <- nc_open("/run/user/44131/gvfs/sftp:host=xvis-m3b/home/andreasd/scripts_and_eval/ABC4CDE/abc4cde_wp4.git/branches/andreasd/data/timmean_tg_EUR11-grid_v14.0.nc")
+tref <- ncvar_get(nc,"tg")
+nc_close(nc)
 
-EQC.gcmbias <- function(x,...) {
+nc <- nc_open("/run/user/44131/gvfs/sftp:host=xvis-m3b/home/andreasd/scripts_and_eval/ABC4CDE/abc4cde_wp4.git/branches/andreasd/data/maskedtimmean_tasAdjust_EUR-11_ICHEC-EC-EARTH_rcp45_r12i1p1_SMHI-RCA4_v1-METNO-QMAP-MESAN-1989-2010_day_19700101-20051231.nc")
+tmod1 <- ncvar_get(nc,"tasAdjust")-273.15
+nc_close(nc)
 
-}
+nc <- nc_open("/run/user/44131/gvfs/sftp:host=xvis-m3b/home/andreasd/scripts_and_eval/ABC4CDE/abc4cde_wp4.git/branches/andreasd/data/maskedtimmean_tas_EUR-11_CNRM-CERFACS-CNRM-CM5_historical_r1i1p1_CLMcom-CCLM4-8-17_v1_day_19500101-20051231.nc")
+tmod2 <- ncvar_get(nc,"tas")-273.15
+nc_close(nc)
 
-## This function evaluates whole ensembles and compares the sample of simulated results to corresponding
-## 'observaitons' (one or several reanalyses). The testing is done through rank-statistics, and we expect
-## thatt the rank number follows a uniform distribution if the simulated results and observations blong to
-## the same statistical population. 
-ECQ.ensemble <- function(obs=c('air.mon.mean.nc','ETAINT_t2m.mon.nc','MERRA'),
-                         path='CMIP5.monthly',pattern='tas_',it=c(1980,2015),is=NULL,
-                         anomaly=FALSE) {
-  require(esd)
-  
-  ## Get all the GCM data
-  gcms <- list.files(path=path,pattern=pattern,full.names=TRUE)
-  n <- length(gcms)
-  N <- n + length(obs)
-  m <- length(obs)
-  ## Use the grid of the first reanalysis and interploate the other fields onto this grid
-  y1 <- subset(retrieve(obs[1]),it=it,is=is)
-  if (anomaly) y1 <- anomaly(y1)
-  d <- dim(y1)
-  
-  ## Set up a data matrix containing the data - start with the first reanalysis
-  X <- rep(NA,N*d[1]*d[2]); dim(X) <- c(N,d)
-  cnames <- rep("",N)
-  X[1,,] <- coredata(y1)
-  cnames[1] <- paste(attr(y1,'model_id'),attr(y1,'run'))
-  
-  if (m > 1) {
-    for (i in 2:m) {
-      y <- subset(retrieve(obs[i]),it=it,is=is)
-      y <- regrid(y,is=y1)
-      if (anomaly) y <- anomaly(y)
-      X[i,,] <- coredata(y)
-      cnames[i] <- paste(attr(y,'model_id'),attr(y,'run'))
-    }
-  }
-  
-  ## Do the GCMs:
-  for (i in 1:n) {
-    y <- subset(retrieve(gcms[i]),it=it,is=is)
-    y <- regrid(y,is=y1)
-    if (anomaly) y <- anomaly(y)
-    X[i+m,,] <- coredata(y)
-    cnames[i+m] <- paste(attr(y,'model_id'),attr(y,'run'))
-  }
-  
-  ## convert the matrix to 2D
-  dim(X) <- c(N*d[1],d[2])
-  
-  ## For each gridpoint, accumulate the ranks for all the time steps.
-  ## The dimension of the results should be [m*d[1],d[2]], where te elements of the 
-  ## first dimension is expected to follow a uniform distribution if the GCMs and reanalysis
-  ## belong to the same population.
-  testmap <- apply(X,1,testrank,m,N,d[1])
-}
+nc <- nc_open("/run/user/44131/gvfs/sftp:host=xvis-m3b/home/andreasd/scripts_and_eval/ABC4CDE/abc4cde_wp4.git/branches/andreasd/data/maskedtimmean_tas_EUR-11_CNRM-CERFACS-CNRM-CM5_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc")
+tmod3 <- ncvar_get(nc,"tas")-273.15
+nc_close(nc)
+
+nc <- nc_open("/run/user/44131/gvfs/sftp:host=xvis-m3b/home/andreasd/scripts_and_eval/ABC4CDE/abc4cde_wp4.git/branches/andreasd/data/timmean_rr_EUR11-grid_v14.0.nc")
+pref <- ncvar_get(nc,"rr")
+nc_close(nc)
+
+nc <- nc_open("/run/user/44131/gvfs/sftp:host=xvis-m3b/home/andreasd/scripts_and_eval/ABC4CDE/abc4cde_wp4.git/branches/andreasd/data/maskedtimmean_prAdjust_EUR-11_ICHEC-EC-EARTH_rcp45_r12i1p1_SMHI-RCA4_v1-METNO-QMAP-MESAN-1989-2010_day_19700101-20051231.nc")
+prmod1 <- ncvar_get(nc,"prAdjust")*86400
+nc_close(nc)
+
+nc <- nc_open("/run/user/44131/gvfs/sftp:host=xvis-m3b/home/andreasd/scripts_and_eval/ABC4CDE/abc4cde_wp4.git/branches/andreasd/data/maskedtimmean_pr_EUR-11_MOHC-HadGEM2-ES_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051230.nc")
+prmod2 <- ncvar_get(nc,"pr")*86400
+nc_close(nc)
+
+#Calculate spatial standard deviatons
+sdtr <- SD(tref,FALSE)
+sdt1 <- SD(tmod1,FALSE)
+sdt2 <- SD(tmod2,FALSE)
+sdt3 <- SD(tmod3,FALSE)
+
+sdpr <- SD(pref,FALSE)
+sdp1 <- SD(prmod1,FALSE)
+sdp2 <- SD(prmod2,FALSE)
+
+#Calculate spatial correlations with reference
+cort1 <- cor(as.vector(tref),as.vector(tmod1),use = "pairwise")
+cort2 <- cor(as.vector(tref),as.vector(tmod2),use = "pairwise")
+cort3 <- cor(as.vector(tref),as.vector(tmod3),use = "pairwise")
+
+corp1 <- cor(as.vector(pref),as.vector(prmod1),use = "pairwise")
+corp2 <- cor(as.vector(pref),as.vector(prmod2),use = "pairwise")
+
+#Create data fram with URLs, spatial standard deviations (SSD), reference SSD and correlations.
+RSD_data <- data.frame(DataURL= ML,
+                       SSD= round(c(sdt1,sdt2,sdt3,sdp1,sdp2),3),
+                       SSDRef=round(c(sdtr,sdtr,sdtr,sdpr,sdpr),3),
+                       CorrWithRef= round(c(cort1,cort2,cort3,corp1,corp2),3))
+
+#Save to RData file
+save(RSD_data,file="sd_cor.rda")
 
 
-EQC.stations <- function() {
-  ## wilcox.test for assessment against station values
-} 
-
-EQC.commonEOF <- function() {
-  ## For visualisation and assessment/comparison of spatio-temporal covariance structure
-}
-
-EQC.ensemblenorm <- function() {
-  ## Compare the grid points to a normal distribution:  the Kolmogorov–Smirnov
-  ## https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test
-}
-
-compare.fields <- function(x,y=NULL,lplot=FALSE,type=c("correlation","rmsd"),
-                           filename=NULL,verbose=FALSE,...) {
-  if(verbose) print("compare.field")
-  if(!is.null(y) & inherits(x,"field") & inherits(y,"field")) {
-    if(verbose) print("Calculate comparative statistics")
-    x <- subset(x,is=list(lon=range(lon(y)),lat=range(lat(y))))
-    y <- subset(y,is=list(lon=range(lon(x)),lat=range(lat(x))))
-    if(inherits(x,"annual") & !inherits(y,"annual")) y <- annual(y)
-    if(inherits(y,"annual") & !inherits(x,"annual")) x <- annual(x)
-    if(inherits(x,"seasonal") & !inherits(y,"seasonual")) y <- subset(as.4seasons(y),it=season(x)[1])
-    if(inherits(y,"seasonal") & !inherits(x,"seasonual")) x <- subset(as.4seasons(x),it=season(y)[1])
-    if(verbose) print("Calculate correlation")
-    r <- corfield(x,y,plot=FALSE)
-    attr(r,"variable") <- "correlation"
-    attr(r,"longname") <- "correlation between fields"
-    attr(r,"unit") <- "-1 to -1"
-    if(verbose) print("Calculate difference in means")
-    mdiff <- apply(x,2,mean)-apply(y,2,mean)
-    mdiff <- attrcp(r,mdiff)
-    attr(mdiff,"variable") <- "meandiff"
-    attr(mdiff,"longname") <- "difference in means"
-    attr(mdiff,"unit") <- attr(x,"unit")
-    class(mdiff) <- "corfield"
-    if(verbose) print("Calculate difference in trend")
-    fn <- function(x) if(any(!is.na(x))) return(trend.coef(x)) else return(NA)
-    tdiff <- apply(x,2,fn) - apply(y,2,fn)
-    tdiff <- attrcp(r,tdiff)
-    attr(tdiff,"variable") <- "trenddiff"
-    attr(tdiff,"longname") <- "difference in trend"
-    attr(tdiff,"unit") <- paste(attr(x,"unit"),"/decade",sep="")
-    class(tdiff) <- "corfield"
-    if(verbose) print("Calculate RMSD and normalised RMSD")
-    rmsd <- apply((x-y)^2,2,function(x) sqrt(sum(x,na.rm=TRUE)/sum(!is.na(x))))
-    nrmsd <- 100*rmsd/apply(x,2,function(x) diff(range(x,na.rm=TRUE)))
-    rmsd <- attrcp(r,rmsd)
-    attr(rmsd,"variable") <- "RMSD"
-    attr(rmsd,"longname") <- "root mean square deviation"
-    attr(rmsd,"unit") <- attr(x,"unit")
-    class(rmsd) <- "corfield"
-    nrmsd <- attrcp(r,nrmsd)
-    attr(nrmsd,"variable") <- "NRMSD"
-    attr(rmsd,"longname") <- "root mean square deviation normalised by the range of the data"
-    attr(nrmsd,"unit") <- "%"
-    class(nrmsd) <- "corfield"
-    z <- list(correlation=r,meandiff=mdiff,trenddiff=tdiff,rmsd=rmsd,nrmsd=nrmsd)
-  } else {
-    z <- x
-  }
-  if(lplot) {
-    if(verbose) print("Plot comparison between fields")
-    stopifnot(inherits(z,"corfield") |
-             (inherits(z,"list") & inherits(z[[1]],"corfield")))
-    if(inherits(z,"corfield")) {
-      eval(parse(text=paste("z <- list(",attr(z,"variable"),"=z)",sep="")))
-      type <- c(attr(z,"variable"))
-    }
-    type <- type[type %in% names(z)]
-    if(is.null(type)) type <- names(z)
-    if(!is.null(filename)) {
-      pdf(filename, 3.2*length(type), 4.0)
-    } else {
-      dev.new(width=3.2*length(type),height=4.0)
-    }
-    par(mar=c(4.5,2.5,3.5,0.5),mgp=c(1.5,0.5,0))
-    for (i in 1:length(type)) {
-      z.i <- z[[which(names(z)==type[[i]])]]
-      cb.i <- select.colbar(z.i)
-      fig.i <- c((i-1)/length(type),i/length(type),0,1)
-      if(i==1) par(fig=fig.i) else par(fig=fig.i,new=TRUE)
-      map(z.i,colbar=cb.i)
-    }
-    if(!is.null(filename)) dev.off()
-  }
-  invisible(z)
-}
