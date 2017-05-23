@@ -15,6 +15,7 @@ require(DECM)
 cfsr.tas <- getCFSR(variable="tas")
 
 #Test for downloading daily E-OBS data and then aggregating in to monthly values.
+
 eobs.pr <- getEOBS(variable="pr")
 
 ## Test for downloading ERA interim data

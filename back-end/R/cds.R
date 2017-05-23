@@ -2,10 +2,12 @@
 ## Rasmus.Benestad@met.no  Oslo, Norway, 2017-02-14
 ##
 
+
 #Helper function to find files linux environment (add Windows counterpart)
 find.file <- function(filename){
-  command <- paste("find $HOME -name",filename,sep=" ")
+  command <- paste("find -L $HOME -name",filename,sep=" ")
   fullpath <- system(command,intern=T)
+  if(length(fullpath)==0)return(FALSE)
   return(fullpath)
 }
 
@@ -259,13 +261,13 @@ getEOBS <- function(variable="tas", destfile=NULL, resolution="0.50", version="1
   }else{
     return("Not implemented yet!")
   }
-  if(!file.exist(filename)) download.file(paste(url.path,filename,sep="/"),destfile=filename)
+  if(!file.exists(filename)) download.file(paste(url.path,filename,sep="/"),destfile=filename)
   gunzip(filename)
   filename <- sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE)
-  if(is.null(destfile)) destfile <- paste(sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),"mon.nc",sep="_")
+  if(is.null(destfile)) destfile <- paste(paste(system("echo $PROTOTYPE_DATA",intern=T),sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),sep="/"),"mon.nc",sep="_")
   commands <- c("-f","nc","-copy","-monavg")
   input <- c("","","","")
-  if(!file.exist(destfile)) cdo.command(commands,input,infile=filename,outfile=destfile)
+  if(!file.exists(destfile)) cdo.command(commands,input,infile=filename,outfile=destfile)
   X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
   cid <- getatt(destfile) 
   cid$url <- paste(url.path,filename,sep="/")

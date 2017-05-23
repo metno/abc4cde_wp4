@@ -199,4 +199,3 @@ for (varid in c("tas","pr")) {
 #calculate.statistics.cordex(reference=opt$reference, period=opt$it, variable=opt$variable, 
 #                          nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
 #                          mask=opt$mask)
-
