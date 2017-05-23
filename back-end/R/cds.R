@@ -8,10 +8,173 @@ require(rgdal)
 
 ##  Function of an R-package that retrieves data files with CMIP or CORDEX results
 
+#---------------------------
+#GetReference
+getReference <- function(reference,variable){
+  path <- system("echo $PROTOTYPE_DATA",intern=T)
+  file.name <- switch(paste(reference,variable,sep="."),
+                      era.tas="era-interim_monthly_1979-2016_tas.2.5deg.nc",
+                      era.pr="era-interim_monthly_1979-2016_pr.2.5deg.nc",
+                      cfsr.tas="cfsr_tmp2m_mon.nc",
+                      cfsr.pr="cfsr_prate_mon.nc")
+  invisible(paste(path,file.name,sep="/"))
+}
+
+#---------------------------
+#GetGCM
+getGCM <- function(number,variable){
+  path <- system("echo $PROTOTYPE_DATA",intern=T)
+  file.name <- paste(paste("GCM",number,sep=""),variable,"nc",sep=".")
+  invisible(paste(path,file.name,sep="/"))
+}
+
+#---------------------------
+#getPolCoords
+getPolCoords <- function(shape,region,destfile=mask){
+  if(is.character(region))region <- which(as.character(shape$LAB)==region)
+  pol.coords <- coordinates(shape@polygons[[region]]@Polygons[[1]])
+  write(t(pol.coords),file=destfile,ncolumns = 2)
+}
+
+#---------------------------
+#cdo.mean
+cdo.mean <- function(model,period=c(1981,2010),mask=NULL,seasonal=F){
+  
+  commands <- c("-fldmean","-timmean","-selyear")
+  input <- c("","",paste(period,collapse="/"))
+  
+  if(!is.null(mask)){
+    commands <- append(commands,"-maskregion",after=2)
+    input <- append(input,mask,after=2) 
+  }
+  if(seasonal){
+    commands <- replace(commands,commands=="-timmean","-yseasmean")
+  }
+  
+  out.file <- "tmp.nc"
+  cdo.command(commands,input,model,out.file)
+  
+  command <- ("output")
+  input <- c("")
+  
+  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=T))
+  if(seasonal){
+    names(out) <- c("djf","mam","jja","son")
+  }else{
+    names(out) <- "ann"
+  } 
+  
+  if(out>200)out <- out-273.15
+  system(paste("rm",out.file,sep=" "))
+  invisible(out)
+}
+
+#---------------------------
+#cdo.timeSd
+cdo.timeSd <- function(model,period=c(1981,2010),mask=NULL,seasonal=F){
+  
+  commands <- c("-timstd","-fldmean","-ymean","-selyear")
+  input <- c("","",paste(period,collapse="/"))
+  
+  if(!is.null(mask)){
+    commands <- append(commands,"-maskregion",after=3)
+    input <- append(input,mask,after=3) 
+  }
+  if(seasonal){
+    commands <- replace(commands,commands=="-ymean","-seasmean")
+  }
+  
+  out.file <- "tmp.nc"
+  cdo.command(commands,input,model,out.file)
+  
+  command <- ("output")
+  input <- c("")
+  
+  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=T))
+  if(seasonal){
+    names(out) <- c("djf","mam","jja","son")
+  }else{
+    names(out) <- "ann"
+  }
+  system(paste("rm",out.file,sep=" "))
+  invisible(out)
+}
+
+#---------------------------
+#cdo.spatSd
+cdo.spatSd <- function(model,period=c(1981,2010),mask=NULL,seasonal=F){
+  
+  commands <- c("-fldstd","-timmean","-selyear")
+  input <- c("","",paste(period,collapse="/"))
+  
+  if(!is.null(mask)){
+    commands <- append(commands,"-maskregion",after=2)
+    input <- append(input,mask,after=2) 
+  }
+  if(seasonal){
+    commands <- replace(commands,commands=="-timmean","-yseasmean")
+  }
+  
+  out.file <- "tmp.nc"
+  cdo.command(commands,input,model,out.file)
+  
+  command <- ("output")
+  input <- c("")
+  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=T))
+  if(seasonal){
+    names(out) <- c("djf","mam","jja","son")
+  }else{
+    names(out) <- "ann"
+  }
+  system("rm tmp.nc")
+  invisible(out)
+}
+
+#---------------------------
+#cdo.gridcor
+cdo.gridcor <- function(model.file,reference.file,period=c(1981,2010),mask=NULL,seasonal=F){
+  
+  commands <- c("-timavg","-selyear")
+  input <- c("",paste(period,collapse="/"))
+  
+  if(!is.null(mask)){
+    commands <- append(commands,"-maskregion",after=2)
+    input <- append(input,mask,after=2) 
+  }
+  if(seasonal){
+    commands <- replace(commands,commands=="-timavg","-yseasavg")
+  }
+  
+  out.file <- "tmp.nc"
+  cdo.command(commands,input,model.file,out.file)
+  
+  out.file <- "tmp2.nc"
+  cdo.command(commands,input,reference.file,out.file)
+  
+  commands <- c("fldcor")
+  input <- c("")
+  in.file <- c("tmp.nc tmp2.nc")
+  out.file <- "tmp_cor.nc"
+  cdo.command(commands,input,in.file,out.file)
+  
+  command <- ("output")
+  input <- c("")
+  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=T))
+  if(seasonal){
+    names(out) <- c("djf","mam","jja","son")
+  }else{
+    names(out) <- "ann"
+  }
+  system("rm tmp.nc tmp2.nc tmp_cor.nc")
+  invisible(out)
+}
+
+
 #Helper function to find files linux environment (add Windows counterpart)
 find.file <- function(filename){
-  command <- paste("find $HOME -name",filename,sep=" ")
+  command <- paste("find -L $HOME -name",filename,sep=" ")
   fullpath <- system(command,intern=T)
+  if(length(fullpath)==0)return(FALSE)
   return(fullpath)
 }
 
@@ -265,13 +428,13 @@ getEOBS <- function(variable="tas", destfile=NULL, resolution="0.50", version="1
   }else{
     return("Not implemented yet!")
   }
-  if(!file.exist(filename)) download.file(paste(url.path,filename,sep="/"),destfile=filename)
+  if(!file.exists(filename)) download.file(paste(url.path,filename,sep="/"),destfile=filename)
   gunzip(filename)
   filename <- sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE)
-  if(is.null(destfile)) destfile <- paste(sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),"mon.nc",sep="_")
+  if(is.null(destfile)) destfile <- paste(paste(system("echo $PROTOTYPE_DATA",intern=T),sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),sep="/"),"mon.nc",sep="_")
   commands <- c("-f","nc","-copy","-monavg")
   input <- c("","","","")
-  if(!file.exist(destfile)) cdo.command(commands,input,infile=filename,outfile=destfile)
+  if(!file.exists(destfile)) cdo.command(commands,input,infile=filename,outfile=destfile)
   X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
   cid <- getatt(destfile) 
   cid$url <- paste(url.path,filename,sep="/")
