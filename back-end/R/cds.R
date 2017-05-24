@@ -51,7 +51,6 @@ gunzip <- function(filename){
   system(system.command,wait=T)
 }
 
-
 #Get grid boxes belonging to a SREX region and calculate some basic statistics for it.
 get.srex.region <- function(destfile,region=NULL,print.srex=F,verbose=F){ 
   home <- system("echo $HOME",intern=T)
@@ -263,7 +262,8 @@ getEOBS <- function(variable="tas", destfile=NULL, resolution="0.50", version="1
   if(!file.exists(filename)) download.file(paste(url.path,filename,sep="/"),destfile=filename)
   gunzip(filename)
   filename <- sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE)
-  if(is.null(destfile)) destfile <- paste(paste(system("echo $PROTOTYPE_DATA",intern=T),sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),sep="/"),"mon.nc",sep="_")
+  if(is.null(destfile)) destfile <- paste(paste(system("echo $EXTERNAL_DATA",intern=T),sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),sep="/"),"mon.nc",sep="_")
+  print(destfile)
   commands <- c("-f","nc","-copy","-monavg")
   input <- c("","","","")
   if(!file.exists(destfile)) cdo.command(commands,input,infile=filename,outfile=destfile)
@@ -394,9 +394,9 @@ cmip5.urls <- function(experiment='rcp45',varid='tas',
   return(urlfiles[-1])
 }
 
-cordex.urls <- function(experiment='rcp45',varid='tas',
-                        url="https://climexp.knmi.nl/CORDEX/EUR-44/mon/",#path=NULL,
+cordex.urls <- function(n=1,experiment='rcp45',varid='tas',url="https://climexp.knmi.nl/CORDEX/EUR-44/mon/",#path=NULL,
 			off=FALSE,force=FALSE,verbose=FALSE) {
+  n <- n-1
   if(verbose) print("cordex.urls")
   urlfiles <- "NA"
   #if(is.null(path)) path <- getwd()
@@ -405,13 +405,12 @@ cordex.urls <- function(experiment='rcp45',varid='tas',
     for (ivar in varid) {
       if(verbose) print(ivar)
       ## Loop on the number of experiments
-      for (irun in 0:20) { ## 
+      for (irun in 0:n) { ## 
         if(verbose) print(paste(irun))
         ## Update experiment number
         if (irun < 10) run.id = paste("00",as.character(irun),sep="")
         else if (irun < 100) run.id = paste("0",as.character(irun),sep="")
         else run.id <- as.character(irun)
-        
         urlfile  <- paste(url,ivar,sep="")             # add var directory
         urlfile  <- paste(urlfile,ivar,sep="/")        # add v.name
         urlfile  <- paste(urlfile,"EUR-44_cordex",sep="_") # add text
