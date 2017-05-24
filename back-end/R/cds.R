@@ -2,7 +2,6 @@
 ## Rasmus.Benestad@met.no  Oslo, Norway, 2017-02-14
 ##
 
-
 #Helper function to find files linux environment (add Windows counterpart)
 find.file <- function(filename){
   command <- paste("find -L $HOME -name",filename,sep=" ")
