@@ -11,29 +11,32 @@ require(rgdal)
 #---------------------------
 #GetReference
 getReference <- function(reference,variable){
-  path <- system("echo $PROTOTYPE_DATA",intern=T)
+  path <- system("echo $EXTERNAL_DATA",intern=T)
   file.name <- switch(paste(reference,variable,sep="."),
                       era.tas="era-interim_monthly_1979-2016_tas.2.5deg.nc",
                       era.pr="era-interim_monthly_1979-2016_pr.2.5deg.nc",
                       cfsr.tas="cfsr_tmp2m_mon.nc",
-                      cfsr.pr="cfsr_prate_mon.nc")
+                      cfsr.pr="cfsr_prate_mon.nc",
+                      eobs.tas="tg_0.50deg_reg_v14.0_mon.nc",
+                      eobs.pr="rr_0.50deg_reg_v14.0_mon.nc")
   invisible(paste(path,file.name,sep="/"))
 }
 
 #---------------------------
-#GetGCM
-getGCM <- function(number,variable){
-  path <- system("echo $PROTOTYPE_DATA",intern=T)
-  file.name <- paste(paste("GCM",number,sep=""),variable,"nc",sep=".")
+#gcm.name
+get.name <- function(number,variable,is.rcm=F){
+  path <- system("echo $EXTERNAL_DATA",intern=T)
+  prefix <- "GCM"
+  if(is.rcm) prefix <- "RCM"
+  file.name <- paste(paste(prefix,number,sep=""),variable,"nc",sep=".")
   invisible(paste(path,file.name,sep="/"))
 }
 
 #---------------------------
 #getPrudenceCoords
-getPrudenceCoords <- function(file="RegionSpecifications.csv",destfile="coords.txt",region){
-  file.name <- find.file(file)
-  prudence <- read.csv(file=file.name, header=TRUE, sep=",")
-  i <- which(prudence[,2]==region)
+getPrudenceCoords <- function(prudence,destfile="coords.txt",region){
+  i <- region
+  if(is.character(region))i <- which(prudence[,2]==region)
   lat <- as.numeric(prudence[i,6:7])
   lon <- as.numeric(prudence[i,4:5])
   coords1 <- expand.grid(lon[1],lat)
@@ -44,7 +47,7 @@ getPrudenceCoords <- function(file="RegionSpecifications.csv",destfile="coords.t
 
 #---------------------------
 #getPolCoords
-getPolCoords <- function(shape,region,destfile="coords.txt"){
+getPolCoords <- function(shape="",region,destfile="coords.txt"){
   if(is.character(region))region <- which(as.character(shape$LAB)==region)
   pol.coords <- coordinates(shape@polygons[[region]]@Polygons[[1]])
   write(t(pol.coords),file=destfile,ncolumns = 2)
@@ -232,7 +235,6 @@ gunzip <- function(filename){
   system.command <- paste("gunzip",filename)
   system(system.command,wait=T)
 }
-
 
 #Get grid boxes belonging to a SREX region and calculate some basic statistics for it.
 get.srex.region <- function(destfile,region=NULL,print.srex=F,verbose=F){ 
@@ -445,7 +447,8 @@ getEOBS <- function(variable="tas", destfile=NULL, resolution="0.50", version="1
   if(!file.exists(filename)) download.file(paste(url.path,filename,sep="/"),destfile=filename)
   gunzip(filename)
   filename <- sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE)
-  if(is.null(destfile)) destfile <- paste(paste(system("echo $PROTOTYPE_DATA",intern=T),sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),sep="/"),"mon.nc",sep="_")
+  if(is.null(destfile)) destfile <- paste(paste(system("echo $EXTERNAL_DATA",intern=T),sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),sep="/"),"mon.nc",sep="_")
+  print(destfile)
   commands <- c("-f","nc","-copy","-monavg")
   input <- c("","","","")
   if(!file.exists(destfile)) cdo.command(commands,input,infile=filename,outfile=destfile)
@@ -688,9 +691,9 @@ cmip5.urls <- function(experiment='rcp45',varid='tas',
   return(urlfiles[-1])
 }
 
-cordex.urls <- function(experiment='rcp45',varid='tas',
-                        url="https://climexp.knmi.nl/CORDEX/EUR-44/mon/",#path=NULL,
+cordex.urls <- function(n=1,experiment='rcp45',varid='tas',url="https://climexp.knmi.nl/CORDEX/EUR-44/mon/",#path=NULL,
 			off=FALSE,force=FALSE,verbose=FALSE) {
+  n <- n-1
   if(verbose) print("cordex.urls")
   urlfiles <- "NA"
   #if(is.null(path)) path <- getwd()
@@ -699,34 +702,19 @@ cordex.urls <- function(experiment='rcp45',varid='tas',
     for (ivar in varid) {
       if(verbose) print(ivar)
       ## Loop on the number of experiments
-      for (irun in 0:20) { ## 
+      for (irun in 0:n) { ## 
         if(verbose) print(paste(irun))
         ## Update experiment number
         if (irun < 10) run.id = paste("00",as.character(irun),sep="")
         else if (irun < 100) run.id = paste("0",as.character(irun),sep="")
         else run.id <- as.character(irun)
-        
-        ## Create output directory for the climate experiment
-        #path.exp <- file.path(path,experiment[grep(iexp,experiment)],
-        #                      fsep = .Platform$file.sep)
-        #if (!file.exists(path.exp)) dir.create(path.exp)
-        #if (verbose) print(path.exp[grep(iexp,experiment)])
-        ## Define the output file
-        #destfile <- paste(path.exp,varid[grep(ivar,varid)],sep="/") 
-        #destfile <- paste(destfile,"EUR-44_cordex",sep="_")
-        #destfile <- paste(destfile,iexp,"mon",sep="_")
-        #destfile <- paste(destfile,run.id,sep="_")
-        #destfile <- paste(destfile,".nc",sep="")
-        
-        #if (!file.exists(destfile) | force) {
-          ## Update output filename with attributes:
-          urlfile  <- paste(url,ivar,sep="")             # add var directory
-          urlfile  <- paste(urlfile,ivar,sep="/")        # add v.name
-          urlfile  <- paste(urlfile,"EUR-44_cordex",sep="_") # add text
-          urlfile  <- paste(urlfile,iexp,"mon",sep="_")         # add exp.name
-          urlfile  <- paste(urlfile,run.id,sep="_")      # add exp ID number
-          urlfile  <- paste(urlfile,".nc",sep="")        # add file ext
-        #}
+        ## Update output filename with attributes:
+        urlfile  <- paste(url,ivar,sep="")             # add var directory
+        urlfile  <- paste(urlfile,ivar,sep="/")        # add v.name
+        urlfile  <- paste(urlfile,"EUR-44_cordex",sep="_") # add text
+        urlfile  <- paste(urlfile,iexp,"mon",sep="_")         # add exp.name
+        urlfile  <- paste(urlfile,run.id,sep="_")      # add exp ID number
+        urlfile  <- paste(urlfile,".nc",sep="")        # add file ext
         urlfiles <- c(urlfiles,urlfile)
         if (verbose) print(urlfile)
       }
