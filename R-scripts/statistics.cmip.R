@@ -77,7 +77,7 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
   }
   
   for(i in start:end){
-    gcm.file <- getGCM(i,variable)
+    gcm.file <- get.name(i,variable)
     if(!file.exists(gcm.file)) download.file(cmip5.urls(i,variable), destfile=paste(system("echo $PROTOTYPE_DATA"),gcm.file,sep="/"))
     store.name <- paste("gcm",i,sep=".")
     store[[store.name]]$spatial.sd <- c(cdo.spatSd(gcm.file,period),cdo.spatSd(gcm.file,period,seasonal=T))
@@ -91,11 +91,10 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
     }
     saveRDS(store,store.file)
     gc()
-    if(i==ngcm)return(store)
+    if(i==ngcm)return(invisible(store))
   }
-  return(store)
+  return(invisible(store))
 }
 
-calculate.statistics.cmip(opt$reference,c(opt$period1,opt$period2),opt$variable,opt$nfiles,
+store <- calculate.statistics.cmip(opt$reference,c(opt$period1,opt$period2),opt$variable,opt$nfiles,
                           opt$continue,opt$verbose,opt$mask)
-
