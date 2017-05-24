@@ -74,7 +74,7 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
   
   for(i in start:end){
     gcm.file <- get.name(i,variable)
-    if(!file.exists(gcm.file)) download.file(cmip5.urls(i,variable), destfile=paste(Sys.getenv("PROTOTYPE_DATA"),gcm.file,sep="/"))
+    if(!file.exists(gcm.file)) download.file(cmip5.urls(i,variable), destfile=paste(Sys.getenv("EXTERNAL_DATA"),gcm.file,sep="/"))
     store.name <- paste("gcm",i,sep=".")
     store[[store.name]]$spatial.sd <- c(cdo.spatSd(gcm.file,period),cdo.spatSd(gcm.file,period,seasonal=T))
     store[[store.name]]$mean <- c(cdo.mean(gcm.file,period),cdo.mean(gcm.file,period,seasonal=T))
