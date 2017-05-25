@@ -94,9 +94,9 @@ getRCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE) {
 }
 
 ## Compute the common EOFs for GCMs and save the results for the front-end
-commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NULL,
+commonEOF.gcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NULL,
                            it='annual',is=NULL,verbose=FALSE) {
-  if(verbose) print("commonEOFS.gcm")
+  if(verbose) print("commonEOF.gcm")
   if(is.null(destfile)) destfile <- paste('GCM',select,'.',varid,'.nc',sep='')
   getGCMs(select=select,varid=varid,destfile=destfile)
   X <- NULL
@@ -143,9 +143,9 @@ commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NU
 }
 
 ## Compute the common EOFs for RCMs save the results for the front-end
-commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NULL,
+commonEOF.rcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NULL,
                            it='annual',is=NULL,verbose=FALSE) {
-  if(verbose) print("commonEOFS.rcm")
+  if(verbose) print("commonEOF.rcm")
   if(is.null(destfile)) destfile <- paste(rep('CM',length(select)),select,'.',varid,'.nc',sep='')
   getRCMs(select=select,varid=varid,destfile=destfile,verbose=verbose)
   X <- NULL
@@ -193,8 +193,8 @@ commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NU
   invisible(ceof)
 }
 
-subset.commonEOFS <- function(x,it=NULL,is=NULL,ip=NULL,im=NULL,verbose=FALSE) {
-  if(verbose) print("subset.commonEOFS")
+subset.commonEOF <- function(x,it=NULL,is=NULL,ip=NULL,im=NULL,verbose=FALSE) {
+  if(verbose) print("subset.commonEOF")
   Y <- subset.dsensemble.multi(x,it=it,is=is,ip=ip,im=im,verbose=verbose)
   if(is.null(im)) im <- seq(length(x)-2)
   Y.mean <- attr(x,"mean")[im]
@@ -213,12 +213,12 @@ subset.commonEOFS <- function(x,it=NULL,is=NULL,ip=NULL,im=NULL,verbose=FALSE) {
   return(Y)
 }
   
-map.commonEOFS <- function(x,it=NULL,is=NULL,ip=NULL,im=NULL,FUN="mean",plot=FALSE,
+map.commonEOF <- function(x,it=NULL,is=NULL,ip=NULL,im=NULL,FUN="mean",plot=FALSE,
                            colbar=list(pal=NULL,rev=FALSE,n=10,breaks=NULL,pos=0.05,
                            show=TRUE,type="p",cex=2,h=0.6,v=1),
                            verbose=FALSE) {
-  if(verbose) print("map.commonEOFS")
-  x <- subset.commonEOFS(x,it=it,is=is,ip=ip,im=im,verbose=verbose)
+  if(verbose) print("map.commonEOF")
+  x <- subset.commonEOF(x,it=it,is=is,ip=ip,im=im,verbose=verbose)
   Y <- map(x,it=it,anomaly=TRUE,plot=FALSE,FUN=FUN,verbose=verbose)
   if( FUN %in% c("mean","median","q5","q95") ) {
     if(is.null(im)) im <- seq(length(x)-2)
@@ -249,32 +249,16 @@ cmip5.urls <- function(experiment='rcp45',varid='tas',
         else if (irun < 100) run.id = paste("0",as.character(irun),sep="")
         else run.id <- as.character(irun)
         
-        ## Create output directory for the climate experiment
-        #path.exp <- file.path(path,experiment[grep(iexp,experiment)],
-        #                      fsep = .Platform$file.sep)
-        #if (!file.exists(path.exp)) dir.create(path.exp)
-        #if (verbose) print(path.exp[grep(iexp,experiment)])
-        ## Define the output file
-        #destfile <- paste(path.exp,varid[grep(ivar,varid)],sep="/") 
-        #destfile <- paste(destfile,"_Amon_ens_",sep="")
-        #destfile <- paste(destfile,iexp,sep="")
-        #destfile <- paste(destfile,run.id,sep="_")
-        #destfile <- paste(destfile,".nc",sep="")
-        
-        #if (!file.exists(destfile) | force) {
-          ## Update output filename with attributes:
-          urlfile  <- paste(url,ivar,sep="")             # add var directory
-          urlfile  <- paste(urlfile,ivar,sep="/")        # add v.name
-          urlfile  <- paste(urlfile,"_Amon_ens_",sep="") # add text
-          urlfile  <- paste(urlfile,iexp,sep="")         # add exp.name
-          urlfile  <- paste(urlfile,run.id,sep="_")      # add exp ID number
-          urlfile  <- paste(urlfile,".nc",sep="")        # add file ext
-        #}
+        urlfile  <- paste(url,ivar,sep="")             # add var directory
+        urlfile  <- paste(urlfile,ivar,sep="/")        # add v.name
+        urlfile  <- paste(urlfile,"_Amon_ens_",sep="") # add text
+        urlfile  <- paste(urlfile,iexp,sep="")         # add exp.name
+        urlfile  <- paste(urlfile,run.id,sep="_")      # add exp ID number
+        urlfile  <- paste(urlfile,".nc",sep="")        # add file ext
         urlfiles <- c(urlfiles,urlfile)
         if (verbose) print(urlfile)
       }
-      
-    } # End for   
+    } 
   }
   return(urlfiles[-1])
 }
@@ -297,32 +281,16 @@ cordex.urls <- function(experiment='rcp45',varid='tas',
         else if (irun < 100) run.id = paste("0",as.character(irun),sep="")
         else run.id <- as.character(irun)
         
-        ## Create output directory for the climate experiment
-        #path.exp <- file.path(path,experiment[grep(iexp,experiment)],
-        #                      fsep = .Platform$file.sep)
-        #if (!file.exists(path.exp)) dir.create(path.exp)
-        #if (verbose) print(path.exp[grep(iexp,experiment)])
-        ## Define the output file
-        #destfile <- paste(path.exp,varid[grep(ivar,varid)],sep="/") 
-        #destfile <- paste(destfile,"EUR-44_cordex",sep="_")
-        #destfile <- paste(destfile,iexp,"mon",sep="_")
-        #destfile <- paste(destfile,run.id,sep="_")
-        #destfile <- paste(destfile,".nc",sep="")
-        
-        #if (!file.exists(destfile) | force) {
-          ## Update output filename with attributes:
-          urlfile  <- paste(url,ivar,sep="")             # add var directory
-          urlfile  <- paste(urlfile,ivar,sep="/")        # add v.name
-          urlfile  <- paste(urlfile,"EUR-44_cordex",sep="_") # add text
-          urlfile  <- paste(urlfile,iexp,"mon",sep="_")         # add exp.name
-          urlfile  <- paste(urlfile,run.id,sep="_")      # add exp ID number
-          urlfile  <- paste(urlfile,".nc",sep="")        # add file ext
-        #}
+        urlfile  <- paste(url,ivar,sep="")             # add var directory
+        urlfile  <- paste(urlfile,ivar,sep="/")        # add v.name
+        urlfile  <- paste(urlfile,"EUR-44_cordex",sep="_") # add text
+        urlfile  <- paste(urlfile,iexp,"mon",sep="_")         # add exp.name
+        urlfile  <- paste(urlfile,run.id,sep="_")      # add exp ID number
+        urlfile  <- paste(urlfile,".nc",sep="")        # add file ext
         urlfiles <- c(urlfiles,urlfile)
         if (verbose) print(urlfile)
       }
-      
-    } # End for   
+    }
   }
   return(urlfiles[-1])
 }
@@ -354,7 +322,6 @@ metaextract <- function(x=NULL, verbose=FALSE) {
       colnames(Y.new) <- cn.all
       j <- sapply(colnames(Y),function(x) which(cn.all==x))
       Y.new[1:(i-1),j] <- Y[1:(i-1),]
-      #for(k in 1:(i-1)) Y.new[k,j] <- Y[k,]
       for(cn in colnames(yi)) {
         Y.new[i,colnames(Y.new)==cn] <- yi[colnames(yi)==cn]
       }
