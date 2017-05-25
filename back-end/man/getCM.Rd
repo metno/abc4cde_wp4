@@ -1,12 +1,9 @@
 \name{getCM}
+\name{cmip5.urls}
+\name{cordex.urls}
 \alias{getCM}
-\alias{getatt}
 \alias{getGCMs}
-\alias{testGCM}
 \alias{getRCMs}
-\alias{cmip5.urls}
-\alias{commonEOFS.gcm}
-\alias{commonEOFS.rcm}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 %%  ~~function to do ... ~~
@@ -15,16 +12,16 @@
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-getCM(url = "https://climexp.knmi.nl/CMIP5/monthly/tas/tas_Amon_ACCESS1-0_historical_000.nc", destfile = "CM.nc", lon = NULL, lat = NULL,force=FALSE)
-getatt(fname)
-getGCMs(select=1:3,varid='tas',destfile=destfile=paste(rep('GCM',3),1:3,'.nc',sep=''))
-testGCM(select=1:3,varid='tas',path='~/storeB/CMIP5.monthly/rcp45/')
-getRCMs(select=1:3,varid='tas',destfile=destfile=paste(rep('RCM',3),1:3,'.nc',sep=''))
+getCM(url=NULL,destfile='CM.nc',lon=NULL,lat=NULL,force=FALSE,verbose=FALSE)
 cmip5.urls(experiment='rcp45',varid='tas',
            url="http://climexp.knmi.nl/CMIP5/monthly/", 
            path=NULL,off=FALSE,force=FALSE,verbose=FALSE)
-commonEOFS.gcm(select=1:3,varid='tas',destfile=paste(rep('CM',3),1:3,'.nc',sep=''),it='annual',is=NULL)
-commonEOFS.rcm(select=1:3,varid='tas',destfile=paste(rep('CM',3),1:3,'.nc',sep=''),it='annual,is=NULL)
+cordex.urls(experiment='rcp45',varid='tas',
+           url="http://climexp.knmi.nl/CMIP5/monthly/", 
+           path=NULL,off=FALSE,force=FALSE,verbose=FALSE)
+getatt(fname)
+getGCMs(select=1:3,varid='tas',destfile=destfile=paste(rep('GCM',3),1:3,'.nc',sep=''))
+getRCMs(select=1:3,varid='tas',destfile=destfile=paste(rep('RCM',3),1:3,'.nc',sep=''))
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
