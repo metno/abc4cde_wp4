@@ -6,14 +6,61 @@ library(esd)
 library(DT)
 #if ('RgoogleMaps' %in% installed.packages()) install.packages('RgoogleMaps')
 
-## Preparations - load metadata.
-load('../back-end/data/metaextract.rda')
+## Preparations
+## source scripts
+path.R <- "../back-end/R"
+path.data <- "../back-end/data"
+source(file.path(path.R,"cds.R"))
+source(file.path(path.R,"plottingtools.R"))
+source(file.path(path.R,"eqc.R"))
+## load metadata
+load(file.path(path.data,"metaextract.rda"))
 M <- data.frame(list(project_id=meta$project_id, experiment_id=meta$experiment_id, gcm=meta$gcm,
                      rip=meta$gcm_rip, rcm=meta$rcm, var=meta$var, unit=meta$unit, resolution=paste(meta$resolution,"deg"),
                      domain=paste(gsub(","," - ",meta$lon),"E"," / ",paste(gsub(","," - ",meta$lat)),"N",sep=""), 
                      years=gsub(",","-",gsub("-[0-9]{2}","",meta$dates)), url=meta$url))
+## load and expand commonEOFs
+load(file.path(path.data,"ceof.gcm.tas.annual.rda"))
+ceof.tas.gcms <- ceof
+load(file.path(path.data,"ceof.gcm.pr.annual.rda"))
+ceof.pr.gcms <- ceof
+load(file.path(path.data,"ceof.rcm.tas.annual.rda"))
+ceof.tas.rcms <- ceof
+load(file.path(path.data,"ceof.rcm.pr.annual.rda"))
+ceof.pr.rcms <- ceof
 
 selectrowindex <- 1
+
+select.ceof <- function(table_rows_selected=1,varid="Temperature") {
+  if (length(table_rows_selected)>0) {
+    selectedrowindex <- table_rows_selected[length(table_rows_selected)]
+    selectedrowindex <- as.numeric(selectedrowindex)
+  } else {
+    selectedrowindex <- 1
+  }
+  selectedrow <- (M[selectedrowindex,])
+  ceof <- NULL
+  if(selectedrow$project_id=="CMIP5") {
+    if (grepl("temp",tolower(varid))) {
+      ceof <- ceof.tas.gcms 
+    } else { 
+      ceof <- ceof.pr.gcms
+    }
+    im <- which(attr(ceof,"model_id")$gcm==selectedrow$gcm & 
+                  attr(ceof,"model_id")$gcm_rip==selectedrow$rip)
+  } else if(selectedrow$project_id=="CORDEX") {
+    if (grepl("temp",tolower(varid))) {
+      ceof <- ceof.tas.rcms
+    } else if(grepl("pr",tolower(varid))) {
+      ceof <- ceof.pr.rcms
+    }
+    im <- which(attr(ceof,"model_id")$rcm==selectedrow$rcm & 
+                  attr(ceof,"model_id")$gcm==selectedrow$gcm & 
+                  attr(ceof,"model_id")$gcm_rip==selectedrow$rip)
+  }
+  attr(ceof,"im") <- im
+  return(ceof)
+}
 
 # Define a server for the Shiny app
 shinyServer(function(input, output) {
@@ -37,45 +84,27 @@ shinyServer(function(input, output) {
               caption='Glossary and variable names',style="bootstrap")
   })
   
-  output$plot <- renderPlot({
-    library(esd)
-    #browser()
-    # if (length(input$table_rows_selected)>0) {
-    #   selectedrowindex <- input$table_rows_selected[length(input$table_rows_selected)]
-    #   selectedrowindex <- as.numeric(selectedrowindex)
-    #   selectedrow <- (select.station()[selectedrowindex,]) # datasetInput() 
-    #   #selectedrow
-    # } else
-    #   selectedrowindex <- 1
-    # plot(station(select.station()[selectedrowindex,]),new=FALSE)  # datasetInput()
-    #data(Oslo)
-    #plot(Oslo)
-  })
-  
   output$selectedrow <- DT::renderDataTable({
     if (length(input$table_rows_selected)>0) {
       selectedrowindex <- input$table_rows_selected[length(input$table_rows_selected)]
       selectedrowindex <- as.numeric(selectedrowindex)
-    } else
-      selectedrowindex
-    selectedrow <- (select.station()[selectedrowindex,])
+    } else {
+      selectedrowindex <- 1
+    }
+    selectedrow <- (M[selectedrowindex,])
     selectedrow
-    ##plot(station(select.station()[selectedrowindex,]))  
   })
   
-  output$selsta <- DT::renderDataTable({
-    #browser()
-    # if (length(input$table_rows_selected)>0) {
-    #   selectedrowindex <- input$table_rows_selected[length(input$table_rows_selected)]
-    #   selectedrowindex <- as.numeric(selectedrowindex)
-    # } else 
-    #   selectedrowindex <- 1
-    # selectedrow <- (select.station()[selectedrowindex,])
-    # selectedrow
-    # sel.sta <- select.station()[selectedrowindex,]  
-    # DT::datatable(sel.sta,options = list(dom = 't'))
+  selected.ceof <- reactive({
+    select.ceof(input$table_rows_selected,input$varid)  
   })
   
+  output$dtdpr <- renderPlot({
+    ceof.tas <- select.ceof(input$table_rows_selected,"temp")
+    ceof.pr <- select.ceof(input$table_rows_selected,"precip")
+    dtdpr(ceof.tas=ceof.tas,ceof.pr=ceof.pr,im=attr(ceof.tas,"im"),new=FALSE)
+  })
+
   output$rawdata <- DT::renderDataTable({
     #browser()
     # if (length(input$table_rows_selected)>0) {
@@ -91,17 +120,8 @@ shinyServer(function(input, output) {
   })
   
   output$map <- renderPlot({
-    library(esd)
-    # if (length(input$table_rows_selected)>0) {
-    #   selectedrowindex <- input$table_rows_selected[length(input$table_rows_selected)]
-    #   selectedrowindex <- as.numeric(selectedrowindex)
-    # } else 
-    #   selectedrowindex <- 1
-    # selectedrow <- (select.station()[selectedrowindex,])
-    # selectedrow
-    # st <- station(select.station()[selectedrowindex,])
-    # map(st,showall=TRUE,xlim=c(-180,180),ylim=c(-90,90),new=FALSE,cex=3)  # datasetInput() # select.station(),subset=
-    # points(lon(st),lat(st),cex=1.5,col='red',bg='orange')
+    ceof <- selected.ceof()
+    map.ensemble(ceof,type=input$type,new=FALSE)
   })
   
   # output$plots <- renderPlot({

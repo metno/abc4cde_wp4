@@ -16,20 +16,36 @@ navbarPage(title = 'Climate model data explorer (Beta version)',
                     DT::dataTableOutput("table")
                     #plotOutput("plot")
            ),
-           tabPanel('Plot', 
-                    #textInput('x2', 'Row ID'), 
-                    plotOutput("plot")
+           tabPanel('Map of climate change', 
+                    column(3, selectInput("type",
+                           label = "What to show on map",
+                           choices = c("Climate change near future",
+                                       "Climate change far future",
+                                       "Mean value present day",
+                                       "Mean value near future",
+                                       "Mean value far future"),
+                           selected = "Climate change far future")),
+                    column(3, selectInput("varid",
+                           label = "Climate variable",
+                           choices = c("Temperature",
+                                       "Precipitation"),
+                           selected = "Temperature")),
+                    plotOutput("map")
            ),
-           tabPanel('View data', 
+           tabPanel('Scatterplot of climate change', 
                     #textInput('x2', 'Row ID'), 
-                    DT::dataTableOutput("selsta",width = 'auto'),
-                    DT::dataTableOutput("rawdata",width = 'auto')
-           ),
-           tabPanel('Download', 
-                    #textInput('x2', 'Row ID'), 
-                    downloadLink('downloadMeta', 'Download Meta'),
-                    downloadLink('downloadData', 'Download Data') 
-           )
+                    plotOutput("dtdpr")
+           )#,
+           #tabPanel('View data', 
+           #         #textInput('x2', 'Row ID'), 
+           #         DT::dataTableOutput("selsta",width = 'auto'),
+           #         DT::dataTableOutput("rawdata",width = 'auto')
+           #),
+           #tabPanel('Download', 
+           #         #textInput('x2', 'Row ID'), 
+           #         downloadLink('downloadMeta', 'Download Meta'),
+           #         downloadLink('downloadData', 'Download Data') 
+           #)
 )
 
 # Define the overall UI
