@@ -3,6 +3,9 @@
 ##
 
 require(esd) ## This code builds on the esd package: https://github.com/metno/esd
+## A fancy colorscale:
+if(!require(wesanderson)) install.packages("wesanderson")
+library(wesanderson)
 
 ##  Function of an R-package that retrieves data files with CMIP or CORDEX results
 
@@ -123,7 +126,7 @@ commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NU
     Z[[paste('rcm.',i+1,sep='')]] <- zoo(coredata(x1),order.by=index(x1))
     gcmnames <- c(gcmnames,attr(x1,'model_id'))
     gcmrip <- c(gcmrip,attr(x1,'parent_experiment_rip'))
-    clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep='')))
+    clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep='')),plot=FALSE)
   }
   attr(Z,'mean') <- clim
   attr(Z,'model_id') <- list(gcm=gcmnames,gcm_rip=gcmrip)
@@ -174,7 +177,7 @@ commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NU
     gcmnames <- c(gcmnames,attr(xi,'driving_model_id'))
     gcmrip <- c(gcmrip,attr(xi,'driving_model_ensemble_member'))
     Z[[paste('rcm.',i+1,sep='')]] <- zoo(coredata(xi),order.by=index(xi))
-    clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep="")))
+    clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep="")),plot=FALSE)
   }
   attr(Z,'mean') <- clim
   attr(Z,'model_id') <- list(rcm=rcmnames,gcm=gcmnames,gcm_rip=gcmrip)
@@ -190,17 +193,41 @@ commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NU
   invisible(ceof)
 }
 
-
-as.field.commonEOFS <- function(x,verbose=FALSE) {
-  if(verbose) print("as.field.ceof")
-  Y <- as.field(x, anomaly=TRUE, verbose=verbose)
-  Y0 <- Y
-  for(i in 1:length(Y)) {
-    clim.i <- coredata(attr(x,"mean")[[i]])
-    Y.i <- coredata(Y[[i]]) 
-    Y.i <- aperm(apply(Y.i,1,function(x) x + clim.i), c(2,1))
-    coredata(Y[[i]]) <- Y.i
+subset.commonEOFS <- function(x,it=NULL,is=NULL,ip=NULL,im=NULL,verbose=FALSE) {
+  if(verbose) print("subset.commonEOFS")
+  Y <- subset.dsensemble.multi(x,it=it,is=is,ip=ip,im=im,verbose=verbose)
+  if(is.null(im)) im <- seq(length(x)-2)
+  Y.mean <- attr(x,"mean")[im]
+  if(length(im)==1) Y.mean <- list(Y.mean)
+  if(!is.null(is)) {
+    ok.lon <- attr(x[[2]],"longitude")>=min(is$lon) & 
+      attr(x[[2]],"longitude")<=max(is$lon)
+    ok.lat <- attr(x[[2]],"latitude")>=min(is$lat) & 
+      attr(x[[2]],"latitude")<=max(is$lat)
+    for(i in seq(1,length(Y.mean))) {
+      clim.i <- Y.mean[[i]][ok.lon,ok.lat]
+      Y.mean[[i]] <- clim.i
+    }
   }
+  attr(Y,"mean") <- Y.mean
+  return(Y)
+}
+  
+map.commonEOFS <- function(x,it=NULL,is=NULL,ip=NULL,im=NULL,FUN="mean",plot=FALSE,
+                           colbar=list(pal=NULL,rev=FALSE,n=10,breaks=NULL,pos=0.05,
+                           show=TRUE,type="p",cex=2,h=0.6,v=1),
+                           verbose=FALSE) {
+  if(verbose) print("map.commonEOFS")
+  x <- subset.commonEOFS(x,it=it,is=is,ip=ip,im=im,verbose=verbose)
+  Y <- map(x,it=it,anomaly=TRUE,plot=FALSE,FUN=FUN,verbose=verbose)
+  if( FUN %in% c("mean","median","q5","q95") ) {
+    if(is.null(im)) im <- seq(length(x)-2)
+    clim <- unlist(coredata(attr(x,"mean")))
+    dim(clim) <- c(ncol(Y),length(im))
+    clim.avg <- apply(clim,1,mean)
+    Y <- Y + aperm(array(rep(clim.avg,nrow(Y)),rev(dim(Y))),c(2,1))
+  }
+  if(plot) map(Y)
   invisible(Y)
 }
 
@@ -472,3 +499,4 @@ metaextract.cordex <- function(x=NULL, verbose=FALSE) {
   }
   return(X)
 }
+
