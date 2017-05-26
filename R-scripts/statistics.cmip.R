@@ -1,8 +1,7 @@
 #!/usr/bin/env Rscript
-
-#Script that calculates statistics for a given period and 
+#Script that calculates statistics for a given period.
 #
-#Olle Räty
+#Olle Räty 2017
 
 #Set environmental variables
 Sys.setenv(EXTERNAL_DATA = "/home/ubuntu/Data")
@@ -12,7 +11,6 @@ Sys.setenv(PROTOTYPE_BACKEND_R = "/home/ubuntu/abc4cde_wp4/back-end/R")
 Sys.setenv(PROTOTYPE_FRONTEND = "/home/ubuntu/abc4cde_wp4/front-end")
 Sys.setenv(PROTOTYPE_DATA = "/home/ubuntu/abc4cde_wp4/back-end/data")
 
-#Command-line parameters
 suppressPackageStartupMessages({
   require(optparse)
   require(esd)
@@ -22,6 +20,7 @@ suppressPackageStartupMessages({
   source(paste(Sys.getenv("PROTOTYPE_BACKEND_R"),"cds.R",sep="/"))
 })
 
+#Command-line parameters
 option_list <- list(
   make_option(c("-v", "--verbose"), action = "store_true", default = TRUE,
               help = "Make the script verbose [default %default]"),
@@ -96,7 +95,6 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
       if(!is.null(reference))store[[store.name]][[srex.regions[j]]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period,mask=mask), cdo.gridcor(gcm.file,ref.file,period,mask=mask,seasonal=T))
     }
     saveRDS(store,store.file)
-#    if(i==ngcm)return(invisible(store))#Redundant check
   }
   return(invisible(store))
 }
