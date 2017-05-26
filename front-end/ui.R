@@ -4,10 +4,6 @@ if (!require("DT")) install.packages('DT')
 library(DT)
 library(esd)
 
-
-selsta <- select.station()
-var.names <- c('Mean temperature','Precipitation','Sunshine')
-
 navbarPage(title = 'Climate model data explorer (Beta version)', 
            id = 'x0',
            tabPanel('Browse', 
