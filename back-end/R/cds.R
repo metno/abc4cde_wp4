@@ -214,9 +214,8 @@ subset.commonEOF <- function(x,it=NULL,is=NULL,ip=NULL,im=NULL,verbose=FALSE) {
 }
   
 map.commonEOF <- function(x,it=NULL,is=NULL,ip=NULL,im=NULL,FUN="mean",plot=FALSE,
-                           colbar=list(pal=NULL,rev=FALSE,n=10,breaks=NULL,pos=0.05,
-                           show=TRUE,type="p",cex=2,h=0.6,v=1),
-                           verbose=FALSE) {
+                          colbar=list(pal=NULL,rev=FALSE,n=10,breaks=NULL,show=TRUE),
+                          verbose=FALSE) {
   if(verbose) print("map.commonEOF")
   x <- subset.commonEOF(x,it=it,is=is,ip=ip,im=im,verbose=verbose)
   Y <- map(x,it=it,anomaly=TRUE,plot=FALSE,FUN=FUN,verbose=verbose)
