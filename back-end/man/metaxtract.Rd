@@ -1,14 +1,16 @@
-\name{metaxtract}
-\alias{metaxtract}
+\name{metaextract}
+\alias{metaextract}
+\alias{metaextract.cmip5}
+\alias{metaextract.cordex}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-%%  ~~function to do ... ~~
+Extract metadata
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+Extract metadata for GCMs and RCMs.
 }
 \usage{
-metaxtract(x)
+metaextract(x)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -30,7 +32,7 @@ metaxtract(x)
 %% ~put references to the literature/web site here ~
 }
 \author{
-%%  ~~who you are~~
+Kajsa Parding, kajsamp@met.no
 }
 \note{
 %%  ~~further notes~~
