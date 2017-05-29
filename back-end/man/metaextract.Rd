@@ -46,42 +46,7 @@ Kajsa Parding, kajsamp@met.no
 %% ~~objects to See Also as \code{\link{help}}, ~~~
 }
 \examples{
-##---- Should be DIRECTLY executable !! ----
-##-- ==>  Define data, use random,
-##--	or do  help(data=index)  for the standard data sets.
-
-## The function is currently defined as
-function (x) 
-{
-    gcms <- names(x)
-    n <- length(gcms)
-    for (i in 1:n) {
-        xx <- x[[gcms[i]]]
-        meta <- names(xx)
-        m <- length(meta)
-        if (i == 1) {
-            X <- matrix(rep("NA", n * m), n, m)
-            colnames(X) <- meta
-            rownames(X) <- gcms
-        }
-        for (ii in 1:m) {
-            if (is.list(xx[[ii]])) 
-                y <- unlist(xx[[ii]])
-            else if (inherits(xx[[ii]], "station")) 
-                y <- as.character(round(mean(subset(xx[[ii]], 
-                  it = c(2070, 2100))), 2))
-            else y <- xx[[ii]]
-            print(class(xx[[ii]]))
-            print(y)
-            if (length(y) > 1) 
-                y <- paste(y, collapse = "-")
-            X[i, ii] <- y
-        }
-    }
-    return(X)
-  }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
-\keyword{ ~kwd1 }% use one of  RShowDoc("KEYWORDS")
-\keyword{ ~kwd2 }% __ONLY ONE__ keyword per line
+\keyword{ utilities }% use one of  RShowDoc("KEYWORDS")
