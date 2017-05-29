@@ -11,6 +11,8 @@ Extract metadata for GCMs and RCMs.
 }
 \usage{
 metaextract(x)
+metaextract.cmip5(x)
+metaextract.cordex(x)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

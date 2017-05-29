@@ -1,15 +1,15 @@
-Package: abc4cde_wp4
-Version: 0.6
-Date: February 14 2017
-Title: climate Data Storage Evaluation and Quality Control.
-Author: Rasmus E. Benestad <rasmus.benestad@met.no>, Abdelkader Mezghani, and Kajsa M. Parding
+Package: DECM
+Version: 0.7
+Date: May 29 2017
+Title: Climate Data Storage Evaluation and Quality Control.
+Author: Rasmus E. Benestad <rasmus.benestad@met.no>, Olle Raty, Andreas Dobler, and Kajsa Parding
 Maintainer: Rasmus E. Benestad <rasmus.benestad@met.no>
 Depends:
     ncdf4,
     zoo,
     esd,
     R (>= 2.10.0)
-Description: The package contains R functions for retrieving  and organising data, extracting metadata into a metadatabase.
+Description: The package contains R functions for retrieving and organising data, extracting metadata into a metadatabase.
 License: GPL (>= 2)
 URL: https://github.com/metno/abc4cde_wp4
 ZipData: no

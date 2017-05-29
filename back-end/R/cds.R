@@ -4,10 +4,10 @@
 
 require(esd) ## This code builds on the esd package: https://github.com/metno/esd
 ## A fancy colorscale:
-if(!require(wesanderson)) install.packages("wesanderson")
-library(wesanderson)
+#if(!require(wesanderson)) install.packages("wesanderson")
+#library(wesanderson)
 
-##  Function of an R-package that retrieves data files with CMIP or CORDEX results
+##  Function of an R-package that retrieves data files with CMIP5 or CORDEX results
 
 getatt <- function(fname) {
   ## Reads and extracts the attribute information in a netCDF files and stores this in a list object## 
@@ -306,7 +306,7 @@ metaextract <- function(x=NULL, verbose=FALSE) {
       print(paste("Warning! project_id is not specified in",xx$filename))
       yi <- NULL
     } else if(grepl("cmip",tolower(xx$project_id))) {
-      yi <- metaextract.cmip(xx,verbose=verbose)
+      yi <- metaextract.cmip5(xx,verbose=verbose)
     } else if(grepl("cordex",tolower(xx$project_id))) {
       yi <- metaextract.cordex(xx,verbose=verbose)
     }
@@ -332,7 +332,7 @@ metaextract <- function(x=NULL, verbose=FALSE) {
   return(Y)
 }
 
-metaextract.cmip <- function(x=NULL, verbose=FALSE) {
+metaextract.cmip5 <- function(x=NULL, verbose=FALSE) {
   if(verbose) print("metaextract.cmip")
   ## argument 'x' is input from getGCMs, getRCMs, testGCM, etc
   if (is.null(x)) x <- c(getGCMs(verbose=verbose),getRCMs(verbose=verbose))

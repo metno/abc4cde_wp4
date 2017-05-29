@@ -41,12 +41,15 @@ getRCMs(select=1:3,varid='tas',destfile=destfile=paste(rep('RCM',3),1:3,'.nc',se
     display comments (silent mode). If TRUE, displays extra information on
     progress.}
 }
-\value{\code{getCM} downloads the data and returns a "zoo" "field" object. \code{getGCMs} and \code{getRCMs} returns a list of "zoo" "field" objects corresponding to different models.
+\value{
+\code{getCM} downloads the data and returns a "zoo" "field" object. 
+\code{getGCMs} and \code{getRCMs} returns a list of "zoo" "field" objects corresponding to different models.
+}
 \references{
 %% ~put references to the literature/web site here ~
 }
 \author{
-Kajsa Parding, kajsamp@met.no
+Kajsa Parding <kajsamp@met.no>
 }
 \note{
 %%  ~~further notes~~
@@ -68,6 +71,7 @@ x <- getCM(url='https://climexp.knmi.nl/CMIP5/monthly/tas/tas_Amon_ACCESS1-0_his
 x.info <- getatt(x)
 y <- getGCMs(select=1:3,lon=c(-60,60),lat=c(45,80))
 map(y[[1]])
+}
 
 \keyword{ cds }
 \keyword{ utilities }

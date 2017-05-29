@@ -24,7 +24,7 @@ EQC.gcmbias <- function(x,...) {
 ## 'observaitons' (one or several reanalyses). The testing is done through rank-statistics, and we expect
 ## thatt the rank number follows a uniform distribution if the simulated results and observations blong to
 ## the same statistical population. 
-ECQ.ensemble <- function(obs=c('air.mon.mean.nc','ETAINT_t2m.mon.nc','MERRA'),
+EQC.ensemble <- function(obs=c('air.mon.mean.nc','ETAINT_t2m.mon.nc','MERRA'),
                          path='CMIP5.monthly',pattern='tas_',it=c(1980,2015),is=NULL,
                          anomaly=FALSE) {
   require(esd)
@@ -88,6 +88,98 @@ EQC.ensemblenorm <- function() {
   ## https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test
 }
 
+dx <- function(ceof,im=NULL,is=NULL,ip=NULL,
+               it1=c(1981,2010),it2=c(2071,2100),
+               FUN="mean",verbose=FALSE,type="point") {
+  if(verbose) print("dx")
+  if(verbose) print("subset common eofs")
+  ceof <- subset.commonEOFS(ceof,is=is,ip=ip)
+  ceof1 <- subset.commonEOFS(ceof,it=it1)
+  ceof2 <- subset.commonEOFS(ceof,it=it2)
+  if(verbose) print("transform to fields")
+  if(is.null(im)) im <- seq(length(ceof)-2)
+  x1 <- lapply(im,function(i) map.commonEOFS(ceof1,it=it1,im=i,FUN=FUN,plot=FALSE))
+  x2 <- lapply(im,function(i) map.commonEOFS(ceof2,it=it2,im=i,FUN=FUN,plot=FALSE))
+  if(verbose) print("calculate change")
+  dx <- lapply(seq(length(x1)), function(i) apply(x2[[i]],2,FUN)-apply(x1[[i]],2,FUN))
+  if(type=="point") {
+    if(verbose) print("return change as an aggregated mean value")
+    DX <- unlist(lapply(dx,mean,na.rm=TRUE))
+  } else if(type=="field") {
+    if(verbose) print("return change as a field")
+    DX <- list()
+    for(i in seq(length(dx))) {
+      dx.i <- unlist(dx[[i]])
+      dim(dx.i) <- c(1,length(dx.i))
+      dx.i <- as.field(dx.i, 1, lon(x1[[i]]), lat(x1[[i]]), 
+                       paste(attr(x1[[i]],"variable"),"change"),attr(x1,"unit"))
+      attr(dx.i,"longname") <- paste(attr(x1[[i]],"variable"),"change from",
+                                     paste(it1,collapse="-"),"to",paste(it2,collapse="-"))
+      DX[[i]] <- dx.i
+    }
+  } else {
+    print("unexpected input 'type' - acceptable options are 'point' or 'field'")
+  }
+  if(verbose) print("dx - end")
+  return(DX)
+}
+
+EQC.scatterplot <- function(ceof.tas,ceof.pr=NULL,is=NULL,it1=c(1976,2005),it2=c(2071,2100),
+                            ip=NULL,im=NULL,pal="grmg",lplot=TRUE,new=TRUE,verbose=FALSE) {
+  if(is.null(ceof.pr) & length(ceof.tas)==2) {
+    dtas <- ceof.tas[[1]]
+    dpr <- ceof.tas[[2]]
+  } else {
+    dtas <- dx(ceof.tas,is=is,it1=it1,it2=it2,ip=ip,verbose=verbose)
+    dpr <- dx(ceof.pr,is=is,it1=it1,it2=it2,ip=ip,verbose=verbose)
+  }   
+  if(lplot) {
+    xlim <- c(-3,3)
+    ylim <- c(-0.2,0.2)
+    if(!is.null(pal)) {
+      #if(pal %in% c(names(wes_palettes))) {
+      #  col <- wes_palette(length(dtas), name = pal, type = "continuous")
+      #} else {
+        col <- colscal(n=length(dtas),col=pal)
+      #}
+    } else {
+      col <- rep("grey50",length(dtas))
+    }
+    bg <- col
+    col[im] <- "black"
+    pch <- 21
+    #pch <- 1:length(dtas)
+    #pch[im] <- 21
+    cex <- rep(1,length(dtas))
+    cex[im] <- 1.5
+    lwd <- rep(1.5,length(dtas))
+    #lwd[im] <- 2
+    label.gcm <- paste(attr(ceof.tas,"model_id")$gcm,
+                       attr(ceof.tas,"model_id")$gcm_rip,sep=".")
+    if(!is.null(attr(ceof.tas,"model_id")$rcm)) {
+      label.gcm <- paste(attr(ceof.tas,"model_id")$rcm,label.gcm,sep="/")
+    }
+    ## Add rcp label  
+    if(new) dev.new()
+    plot(unlist(dtas),unlist(dpr),col=col,pch=pch,cex=cex,lwd=lwd,
+         bg=bg,xlim=xlim,ylim=ylim,
+         xlab="Temperature change (degC)",
+         ylab="Precipitation change (mm/day)",
+         main=paste("Global mean climate change\n",
+                    "(",paste(it1,collapse="-")," to ",paste(it2,collapse="-"),")",sep=""))
+    lines(xlim*1.5,rep(0,2),lwd=0.2)
+    lines(rep(0,2),ylim*1.5,lwd=0.2)
+    grid()
+    legend("bottomleft",ncol=2,pch=pch,cex=0.6,col=col,pt.bg=bg,
+           bg=adjustcolor("white",alpha=0.6),box.lwd=0.5,
+           legend=label.gcm)
+  }
+  
+  X <- list(dtas=dtas,dpr=dpr)
+  attr(X,"model_id") <- attr(ceof.tas,"model_id")
+  return(X)
+}
+
 compare.fields <- function(x,y=NULL,lplot=FALSE,type=c("correlation","rmsd"),
                            filename=NULL,verbose=FALSE,...) {
   if(verbose) print("compare.fields")
@@ -141,7 +233,7 @@ compare.fields <- function(x,y=NULL,lplot=FALSE,type=c("correlation","rmsd"),
   if(lplot) {
     if(verbose) print("Plot comparison between fields")
     stopifnot(inherits(z,"corfield") |
-             (inherits(z,"list") & inherits(z[[1]],"corfield")))
+                (inherits(z,"list") & inherits(z[[1]],"corfield")))
     if(inherits(z,"corfield")) {
       eval(parse(text=paste("z <- list(",attr(z,"variable"),"=z)",sep="")))
       type <- c(attr(z,"variable"))
@@ -165,40 +257,3 @@ compare.fields <- function(x,y=NULL,lplot=FALSE,type=c("correlation","rmsd"),
   }
   invisible(z)
 }
-
-dx <- function(ceof,im=NULL,is=NULL,ip=NULL,
-               it1=c(1981,2010),it2=c(2071,2100),
-               FUN="mean",verbose=FALSE,type="point") {
-  if(verbose) print("dx")
-  if(verbose) print("subset common eofs")
-  ceof <- subset.commonEOFS(ceof,is=is,ip=ip)
-  ceof1 <- subset.commonEOFS(ceof,it=it1)
-  ceof2 <- subset.commonEOFS(ceof,it=it2)
-  if(verbose) print("transform to fields")
-  if(is.null(im)) im <- seq(length(ceof)-2)
-  x1 <- lapply(im,function(i) map.commonEOFS(ceof1,it=it1,im=i,FUN=FUN,plot=FALSE))
-  x2 <- lapply(im,function(i) map.commonEOFS(ceof2,it=it2,im=i,FUN=FUN,plot=FALSE))
-  if(verbose) print("calculate change")
-  dx <- lapply(seq(length(x1)), function(i) apply(x2[[i]],2,FUN)-apply(x1[[i]],2,FUN))
-  if(type=="point") {
-    if(verbose) print("return change as an aggregated mean value")
-    DX <- unlist(lapply(dx,mean,na.rm=TRUE))
-  } else if(type=="field") {
-    if(verbose) print("return change as a field")
-    DX <- list()
-    for(i in seq(length(dx))) {
-      dx.i <- unlist(dx[[i]])
-      dim(dx.i) <- c(1,length(dx.i))
-      dx.i <- as.field(dx.i, 1, lon(x1[[i]]), lat(x1[[i]]), 
-                       paste(attr(x1[[i]],"variable"),"change"),attr(x1,"unit"))
-      attr(dx.i,"longname") <- paste(attr(x1[[i]],"variable"),"change from",
-                                     paste(it1,collapse="-"),"to",paste(it2,collapse="-"))
-      DX[[i]] <- dx.i
-    }
-  } else {
-    print("unexpected input 'type' - acceptable options are 'point' or 'field'")
-  }
-  if(verbose) print("dx - end")
-  return(DX)
-}
-
