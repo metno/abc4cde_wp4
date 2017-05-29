@@ -1,11 +1,12 @@
 # test.R
 
 ## Set paths so that R can find data and R-scripts
-path.data <- "back-end/data"
-path.r <- "back-end/R"
-
-source(file.path(path.r,"cds.R"))
-source(file.path(path.r,"eqc.R"))
+#path.data <- "back-end/data"
+#path.r <- "back-end/R"
+#
+#source(file.path(path.r,"cds.R"))
+#source(file.path(path.r,"eqc.R"))
+library(DECM)
 
 ## Compare fields obtained from common EOF to original data
 varid <- "pr"
