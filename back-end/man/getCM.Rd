@@ -4,6 +4,7 @@
 \alias{getRCMs}
 \name{cmip5.urls}
 \name{cordex.urls}
+\name{thredds.urls}
 \alias{getatt}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
@@ -20,6 +21,10 @@ cmip5.urls(experiment='rcp45',varid='tas',
 cordex.urls(experiment='rcp45',varid='tas',
            url="http://climexp.knmi.nl/CMIP5/monthly/", 
            path=NULL,off=FALSE,force=FALSE,verbose=FALSE)
+thredds.urls(url.rel="raw/tas",pattern=".*EUR-11.*.nc",select=NULL,
+           url.catalog="http://thredds.met.no/thredds/catalog/postclim/data/CORDEX-EUR11",
+           url.data="http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11",
+           verbose=FALSE)
 getGCMs(select=1:3,varid='tas',destfile=destfile=paste(rep('GCM',3),1:3,'.nc',sep=''))
 getRCMs(select=1:3,varid='tas',destfile=destfile=paste(rep('RCM',3),1:3,'.nc',sep=''))
 }
@@ -35,6 +40,9 @@ getRCMs(select=1:3,varid='tas',destfile=destfile=paste(rep('RCM',3),1:3,'.nc',se
   \item{path}{local file path to the destination file}
   \item{it}{Time index for subsetting - see \code{link[esd]{subset}}}
   \item{is}{Space index for subsetting - see \code{link[esd]{subset}}}
+  \item{url.rel}{URL relative to \code{url.base} (and \code{url.download)}}
+  \item{url.base}{Base URL to a catalog of available files.}
+  \item{url.download}{Base URL to location where data can be downloaded. If NULL, url.base is used. (I had problems listing and downloading files from the same location on the metno THREDDS server and solved it by including two different base URLs.)}
   \item{force}{Logical value defaulting to FALSE. If FALSE, do not
     download data from source if a local file \code{path/destfile} is available. If TRUE, download data and overwrite local file.}
   \item{verbose}{Logical value defaulting to FALSE. If FALSE, do not

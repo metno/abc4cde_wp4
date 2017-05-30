@@ -1,5 +1,6 @@
 \name{metaextract}
 \alias{metaextract}
+\alias{metaextract.opendap}
 \alias{metaextract.cmip5}
 \alias{metaextract.cordex}
 %- Also NEED an '\alias' for EACH other topic documented here.
@@ -11,14 +12,14 @@ Extract metadata for GCMs and RCMs.
 }
 \usage{
 metaextract(x)
+metaextract.opendap(url)
 metaextract.cmip5(x)
 metaextract.cordex(x)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{x}{
-%%     ~~Describe \code{x} here~~
-}
+  \item{x}{local file}
+  \item{url}{URL leading to netCDF file}
 }
 \details{
 %%  ~~ If necessary, more details than the description above ~~

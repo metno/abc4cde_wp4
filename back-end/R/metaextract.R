@@ -27,7 +27,7 @@ metaextract.opendap <- function(url=NULL, verbose=FALSE) {
   timeline <- as.PCICt(torigin,cal=caltype) + tdiffsecs
   
   #Return a list with: Global attributes, list of variables, list of dimensions, time range
-  return(list(globat=globat,varlist=varlist,dimlist=dimlist,dataurl=dataurl,range=range(timeline)))
+  return(list(globat=globat,varlist=varlist,dimlist=dimlist,url=url,range=range(timeline)))
 }
 
 ## Function to extract the metadata from local NetCDF files
