@@ -4,7 +4,7 @@
 ## An example script, calculating correlation and standard deviations for a list of (local) files
 ## and save the information to an Rdata file
 
-library(esd)
+library(DECM)
 
 ## ABC4CDE/DEMC - R-script for prototype tool WP4
 ## andreas.dobler@met.no  Oslo, Norway, 2017-05-16
@@ -41,20 +41,18 @@ library(esd)
 #Check if metadata file exists
 #If yes: load
 #If no: generate an empty list and get first entry
-if (file.exists("metaextracted.rda"))
-{
+if (file.exists("metaextracted.rda")) {
   load("metaextracted.rda")
 } else {
-  mdList <- list()
-  dataurl <- CORDEXList[1]
-  mdList[[length(mdList)+1]] <- metaextract_opendap(dataurl)
+  CORDEXList <- c(thredds.urls("raw/tas"),thredds.urls("raw/pr"))
+  mdList <- lapply(dataurl,metaextract.opendap)
 }
 
 #Get the metadata from the first list
 #Skip the entries with matching URLs
 #and add the new ones
-for (dataurl in CORDEXList)
-{
+
+for (dataurl in CORDEXList) {
   if (sum(sapply(mdList,function(X) X$dataurl == dataurl)) ==0 ){
     print(paste("get metadata from",dataurl))
     mdList[[length(mdList)+1]] <- metaextract_opendap(dataurl)

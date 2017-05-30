@@ -3,7 +3,6 @@
 ##
 
 require(esd) ## This code builds on the esd package: https://github.com/metno/esd
-require(xml2)
 ## A fancy colorscale:
 #if(!require(wesanderson)) install.packages("wesanderson")
 #library(wesanderson)
@@ -167,15 +166,15 @@ thredds.urls <- function(url.rel="raw/tas",pattern=".*EUR-11.*.nc",select=NULL,
                          url.base="http://thredds.met.no/thredds/catalog/postclim/data/CORDEX-EUR11",
                          url.download="http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11",
                          verbose=FALSE,...) {
-  if(verbose) print("thredds.url")
-  urls <- url.base
-  if(!is.null(url.rel)) urls <- paste(urls,url.rel,sep="/")
+  if(verbose) print("thredds.urls")
+  url <- url.base
+  if(!is.null(url.rel)) url <- paste(url,url.rel,sep="/")
   if(is.null(url.download)) url.download <- url.base
-  if(!grepl(urls,"catalog.html")) urls <- paste(urls,"catalog.html",sep="/")
+  if(!grepl(url,"catalog.html")) url <- paste(url,"catalog.html",sep="/")
   continue <- TRUE
-  urls.files <- NULL
+  url.files <- NULL
   while(continue) {
-    for(u in urls) {
+    for(u in url) {
       txt <- readLines(u)
       txt <- txt[grep("href",txt)]
       files <- txt[grep(pattern,txt)]
@@ -184,22 +183,23 @@ thredds.urls <- function(url.rel="raw/tas",pattern=".*EUR-11.*.nc",select=NULL,
         files <- gsub(paste(".*./",sep=""),"",files)
         u.data <- gsub(url.base,url.download,u)
         u.data <- gsub("catalog.html","",u.data)
-        urls.files <- c(urls.files,paste(u.data,files,sep=""))
+        url.files <- c(url.files,paste(u.data,files,sep=""))
       }
       folders <- txt[grep("Folder",txt)]
       if(length(folders)>1) {
         folders <- gsub(".*href='|'>.*","",folders)
-        urls <- NULL
+        url <- NULL
         for(i in seq(2,length(folders))) {
           u.i <- gsub("catalog.html",folders[i],u)
-          urls <- c(urls,u.i)
+          url <- c(url,u.i)
         } 
       } else {
         continue <- FALSE
       }
     }
   }
-  return(urls.files)
+  if(!is.null(select)) url.files <- url.files[select]
+  return(url.files)
 }
 
   #CORDEXList <- c("http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_CNRM-CERFACS-CNRM-CM5_historical_r1i1p1_CLMcom-CCLM4-8-17_v1_day_19500101-20051231.nc", 
