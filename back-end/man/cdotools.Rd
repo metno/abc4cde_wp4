@@ -1,49 +1,57 @@
-\name{cdo}
-\alias(cdo.mean)
-\alias(cdo.timeSd)
-\alias(cdo.spatSd)
-\alias(cdo.gridcor)
-\alias(cdo.command)
-\alias(gunzip)
-
+\name{cdo.mean}
+\alias{cdo.mean}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-  CDO calculations in R
+   CDO calculations in R
 }
-\description{Perform operations on netCDF files using CDO. More efficient than doing the same calculations directly in R.
+\description{
+  Do operations on netCDF files with CDO. More efficient than doing the calculations directly in R.
 }
 \usage{
-  cdo.mean(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE)
-  cdo.timeSd(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE)
-  cdo.spatSd(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE)
-  cdo.gridcor(model.file,reference.file,period=c(1981,2010),mask=NULL,seasonal=FALSE)
-  cdo.command(commands,input,infile,outfile,intern=FALSE)
-  gunzip(filename)
+cdo.mean(x)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{model.file}{Path to a netCDF file.}
-  \item{period}{A list providing a time index in the form of a year range.}
-  \item{mask}{A mask to apply to the data. If NULL use no mask. What can mask be except for NULL?}
-  \item{seasonal}{TRUE: Calcuate seasonal values. FALSE: Caculate annual values.}
+  \item{x}{
+%%     ~~Describe \code{x} here~~
 }
-\value{Don't know what type of object the output is. The results are also saved in a netCDF file.}
+}
+\details{
+%%  ~~ If necessary, more details than the description above ~~
+}
+\value{
+%%  ~Describe the value returned
+%%  If it is a LIST, use
+%%  \item{comp1 }{Description of 'comp1'}
+%%  \item{comp2 }{Description of 'comp2'}
+%% ...
+}
 \references{
-  %% ~put references to the literature/web site here ~
+%% ~put references to the literature/web site here ~
 }
 \author{
-  Kajsa Parding <kajsamp@met.no>, Olle Raety
+%%  ~~who you are~~
 }
 \note{
-  %%  ~~further notes~~
+%%  ~~further notes~~
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
-  
-  \seealso{
-    %% ~~objects to See Also as \code{\link{help}}, ~~~
-  }
-\examples{
+
+\seealso{
+%% ~~objects to See Also as \code{\link{help}}, ~~~
 }
-\keyword{ cdo }
-\keyword{ utilities }
+\examples{
+##---- Should be DIRECTLY executable !! ----
+##-- ==>  Define data, use random,
+##--	or do  help(data=index)  for the standard data sets.
+
+## The function is currently defined as
+function (x) 
+{
+  }
+}
+% Add one or more standard keywords, see file 'KEYWORDS' in the
+% R documentation directory.
+\keyword{ ~kwd1 }% use one of  RShowDoc("KEYWORDS")
+\keyword{ ~kwd2 }% __ONLY ONE__ keyword per line
