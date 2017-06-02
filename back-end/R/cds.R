@@ -2,12 +2,6 @@
 ## Rasmus.Benestad@met.no  Oslo, Norway, 2017-02-14
 ##
 
-require(esd) ## This code builds on the esd package: https://github.com/metno/esd
-## A fancy colorscale:
-#if(!require(wesanderson)) install.packages("wesanderson")
-#library(wesanderson)
-
-##  Function of an R-package that retrieves data files with CMIP5 or CORDEX results
 
 getatt <- function(fname) {
   ## Reads and extracts the attribute information in a netCDF files and stores this in a list object## 

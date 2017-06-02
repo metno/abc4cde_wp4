@@ -2,9 +2,6 @@
 ## andreas.dobler@met.no  Oslo, Norway, 2017-05-16
 ##
 
-##  Function of an R-package that retrieves metadata from files located on OPeNDAP servers.
-require(PCICt) ##Used to get the time axes right for 360 day and non-leapyear calendars.
-
 #Function to extract the metadata form NetCDF files on OPeNDAP servers
 metaextract.opendap <- function(url=NULL, verbose=FALSE) {
   if(verbose) print("metaextract_opendap")
