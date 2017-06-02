@@ -35,10 +35,10 @@ map.ensemble <- function(ceof,im=NULL,ip=NULL,is=NULL,type=NULL,new=TRUE,FUN="me
     it2 <- NULL
     label.title <- paste("Ensemble mean of ",attr(ceof[[2]],"longname")," (",paste(it1,collapse="-"),")",sep="")
   }
-  Y1 <- map.commonEOFS(ceof,is=is,im=im,ip=ip,it=it1,FUN=FUN,plot=FALSE)
+  Y1 <- map.commonEOF(ceof,is=is,im=im,ip=ip,it=it1,FUN=FUN,plot=FALSE)
   Y <- apply(Y1,2,mean,na.rm=TRUE)
   if(!is.null(it2)) {
-    Y2 <- map.commonEOFS(ceof,is=is,im=im,ip=ip,it=it2,FUN=FUN,plot=FALSE)
+    Y2 <- map.commonEOF(ceof,is=is,im=im,ip=ip,it=it2,FUN=FUN,plot=FALSE)
     dY <- apply(Y2,2,mean,na.rm=TRUE) - Y
     Y <- dY
   } 

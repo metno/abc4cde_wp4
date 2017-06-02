@@ -2,7 +2,7 @@
 library(shiny)
 if (!require("DT")) install.packages('DT')
 library(DT)
-library(esd)
+library(DECM)
 
 navbarPage(title = 'Climate model data explorer (Beta version)', 
            id = 'x0',

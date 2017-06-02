@@ -102,13 +102,13 @@ dx <- function(ceof,im=NULL,is=NULL,ip=NULL,
                FUN="mean",verbose=FALSE,type="point") {
   if(verbose) print("dx")
   if(verbose) print("subset common eofs")
-  ceof <- subset.commonEOFS(ceof,is=is,ip=ip)
-  ceof1 <- subset.commonEOFS(ceof,it=it1)
-  ceof2 <- subset.commonEOFS(ceof,it=it2)
+  ceof <- subset.commonEOF(ceof,is=is,ip=ip)
+  ceof1 <- subset.commonEOF(ceof,it=it1)
+  ceof2 <- subset.commonEOF(ceof,it=it2)
   if(verbose) print("transform to fields")
   if(is.null(im)) im <- seq(length(ceof)-2)
-  x1 <- lapply(im,function(i) map.commonEOFS(ceof1,it=it1,im=i,FUN=FUN,plot=FALSE))
-  x2 <- lapply(im,function(i) map.commonEOFS(ceof2,it=it2,im=i,FUN=FUN,plot=FALSE))
+  x1 <- lapply(im,function(i) map.commonEOF(ceof1,it=it1,im=i,FUN=FUN,plot=FALSE))
+  x2 <- lapply(im,function(i) map.commonEOF(ceof2,it=it2,im=i,FUN=FUN,plot=FALSE))
   if(verbose) print("calculate change")
   dx <- lapply(seq(length(x1)), function(i) apply(x2[[i]],2,FUN)-apply(x1[[i]],2,FUN))
   if(type=="point") {
