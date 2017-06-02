@@ -1,7 +1,7 @@
 # Calculate the mean value over time with CDO. Faster than in R.
 # Is this function affected by the error that Abdelkader discovered with -timmean?
 
-cdo.mean <- function(model,period=c(1981,2010),mask=NULL,seasonal=FALSE){
+cdo.mean <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) {
   
   commands <- c("-fldmean","-timmean","-selyear")
   input <- c("","",paste(period,collapse="/"))
@@ -15,7 +15,7 @@ cdo.mean <- function(model,period=c(1981,2010),mask=NULL,seasonal=FALSE){
   }
   
   out.file <- "tmp.nc"
-  cdo.command(commands,input,model,out.file)
+  cdo.command(commands,input,model.file,out.file)
   
   command <- ("output")
   input <- c("")
@@ -33,7 +33,7 @@ cdo.mean <- function(model,period=c(1981,2010),mask=NULL,seasonal=FALSE){
 }
 
 ## Calculate the temporal standard deviation with cdo
-cdo.timeSd <- function(model,period=c(1981,2010),mask=NULL,seasonal=FALSE) {
+cdo.timeSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) {
   
   commands <- c("-timstd","-fldmean","-ymean","-selyear")
   input <- c("","",paste(period,collapse="/"))
@@ -47,7 +47,7 @@ cdo.timeSd <- function(model,period=c(1981,2010),mask=NULL,seasonal=FALSE) {
   }
   
   out.file <- "tmp.nc"
-  cdo.command(commands,input,model,out.file)
+  cdo.command(commands,input,model.file,out.file)
   
   command <- ("output")
   input <- c("")
@@ -63,7 +63,7 @@ cdo.timeSd <- function(model,period=c(1981,2010),mask=NULL,seasonal=FALSE) {
 }
 
 # Calculate the spatial standard deviation with cdo
-cdo.spatSd <- function(model,period=c(1981,2010),mask=NULL,seasonal=FALSE){
+cdo.spatSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) {
   
   commands <- c("-fldstd","-timmean","-selyear")
   input <- c("","",paste(period,collapse="/"))
@@ -77,7 +77,7 @@ cdo.spatSd <- function(model,period=c(1981,2010),mask=NULL,seasonal=FALSE){
   }
   
   out.file <- "tmp.nc"
-  cdo.command(commands,input,model,out.file)
+  cdo.command(commands,input,model.file,out.file)
   
   command <- ("output")
   input <- c("")
@@ -92,7 +92,7 @@ cdo.spatSd <- function(model,period=c(1981,2010),mask=NULL,seasonal=FALSE){
 }
 
 # Calculate the spatial correlation of two gridded data sets with cdo
-cdo.gridcor <- function(model.file,reference.file,period=c(1981,2010),mask=NULL,seasonal=F){
+cdo.gridcor <- function(model.file,reference.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) {
   
   commands <- c("-timavg","-selyear")
   input <- c("",paste(period,collapse="/"))
@@ -131,7 +131,7 @@ cdo.gridcor <- function(model.file,reference.file,period=c(1981,2010),mask=NULL,
 
 
 #Apply a set of cdo commands on a grib/netcdf file. Several commands can be piped.
-cdo.command <- function(commands,input,infile,outfile,intern=FALSE){
+cdo.command <- function(commands,input,infile,outfile,intern=FALSE) {
   cdo.coms <- array()
   separators <- array(" ",dim=length(commands))
   separators[which(is.na(match(input,"")))] <- ","
@@ -141,15 +141,15 @@ cdo.command <- function(commands,input,infile,outfile,intern=FALSE){
   system.command <- paste("cdo",paste(cdo.coms,collapse=" "),infile,outfile,sep=" ")
   
   if(intern) {
-    output <- system(system.command,wait=T,intern=T)
+    output <- system(system.command,wait=TRUE,intern=TRUE)
     return(output)
   } else {
-    system(system.command,wait=T)
+    system(system.command,wait=TRUE)
   }
 }
 
 #Unzip a gz package
-gunzip <- function(filename){
+gunzip <- function(filename) {
   system.command <- paste("gunzip",filename)
-  system(system.command,wait=T)
+  system(system.command,wait=TRUE)
 }
