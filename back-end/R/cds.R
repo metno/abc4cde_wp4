@@ -2,12 +2,6 @@
 ## Rasmus.Benestad@met.no  Oslo, Norway, 2017-02-14
 ##
 
-require(esd) ## This code builds on the esd package: https://github.com/metno/esd
-## A fancy colorscale:
-if(!require(wesanderson)) install.packages("wesanderson")
-library(wesanderson)
-
-##  Function of an R-package that retrieves data files with CMIP or CORDEX results
 
 getatt <- function(fname) {
   ## Reads and extracts the attribute information in a netCDF files and stores this in a list object## 
@@ -93,143 +87,6 @@ getRCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE) {
   invisible(X)
 }
 
-## Compute the common EOFs for GCMs and save the results for the front-end
-commonEOF.gcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NULL,
-                           it='annual',is=NULL,verbose=FALSE) {
-  if(verbose) print("commonEOF.gcm")
-  if(is.null(destfile)) destfile <- paste('GCM',select,'.',varid,'.nc',sep='')
-  getGCMs(select=select,varid=varid,destfile=destfile)
-  X <- NULL
-  for (fname in destfile) {
-    if(verbose) print(paste("retrieve",fname))
-    x <- retrieve(fname,verbose=verbose)
-    if (!is.null(it)) {
-      if (tolower(it)=='annual') x <- annual(subset(x,is=is),verbose=verbose) else
-                                 x <- subset(x,it=it,is=is,verbose=verbose)
-    }
-    if (is.null(X)) X <- x else X <- combine(X,x,verbose=verbose)
-  }
-  if(verbose) print("Calculate common EOF")
-  ceof <- EOF(X,verbose=verbose)
-  plot(ceof)
-  
-  ## Need to reformat the ceof-object to fit the set-up for the R-shiny app in the front-end.
-  if(verbose) print("Reformat the common EOF object")
-  x1 <- coredata(ceof); attributes(x1) <- NULL; dim(x1) <- dim(ceof)
-  eof <- as.eof(ceof); attr(eof,"standard.error") <- NULL
-  Z <- list(info='CMIP5 runs',eof=eof,rcm.1=zoo(x1,order.by=index(ceof)))
-  clim <- list(rcm.1=map.field(X,plot=FALSE))
-  gcmnames <- attr(ceof,'model_id')
-  gcmrip <- attr(ceof,'parent_experiment_rip')
-  for (i in 1:attr(ceof,'n.apps')) {
-    x1 <- attr(ceof,paste('appendix.',i,sep=''))
-    Z[[paste('rcm.',i+1,sep='')]] <- zoo(coredata(x1),order.by=index(x1))
-    gcmnames <- c(gcmnames,attr(x1,'model_id'))
-    gcmrip <- c(gcmrip,attr(x1,'parent_experiment_rip'))
-    clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep='')),plot=FALSE)
-  }
-  attr(Z,'mean') <- clim
-  attr(Z,'model_id') <- list(gcm=gcmnames,gcm_rip=gcmrip)
-  class(Z) <- c('dsensemble','eof','list')
-  ceof <- Z
-  if(is.null(destfile.ceof)) {
-    destfile.ceof <- paste('ceof.gcm',varid,it,sep=".")
-    if(!is.null(is)) fname <- paste(destfile.ceof,".",paste(round(is$lon),collapse="-"),"E.",
-                                    paste(round(is$lat),collapse="-"),"N",sep="")
-    destfile.ceof <- paste(destfile.ceof,"rda",sep='.')
-  }
-  save(ceof,file=destfile.ceof)
-  invisible(ceof)
-}
-
-## Compute the common EOFs for RCMs save the results for the front-end
-commonEOF.rcm <- function(select=1:9,varid='tas',destfile=NULL,destfile.ceof=NULL,
-                           it='annual',is=NULL,verbose=FALSE) {
-  if(verbose) print("commonEOF.rcm")
-  if(is.null(destfile)) destfile <- paste(rep('CM',length(select)),select,'.',varid,'.nc',sep='')
-  getRCMs(select=select,varid=varid,destfile=destfile,verbose=verbose)
-  X <- NULL
-  for (fname in destfile) {
-    if(verbose) print(paste("retrieve",fname))
-    x <- retrieve(fname)
-    if (!is.null(it)) {
-      if (tolower(it)=='annual') x <- annual(subset(x,is=is),verbose=verbose) else
-        x <- subset(x,it=it,is=is,verbose=verbose)
-    }
-    if (is.null(X)) X <- x else X <- combine(X,x,verbose=verbose)
-  }
-  if(verbose) print("Calculate common EOF")
-  ceof <- EOF(X,verbose=verbose)
-  plot(ceof)
-  
-  ## Need to reformat the ceof-object to fit the set-up for the R-shiny app in the front-end.
-  if(verbose) print("Reformat the common EOF object")
-  x1 <- coredata(ceof); attributes(x1) <- NULL; dim(x1) <- dim(ceof)
-  eof <- as.eof(ceof); attr(eof,"standard.error") <- NULL
-  Z <- list(info='CORDEX runs',eof=eof,rcm.1=zoo(x1,order.by=index(ceof)))
-  clim <- list(rcm.1=map.field(X,plot=FALSE))
-  rcmnames <- attr(ceof,'model_id')
-  gcmnames <- attr(ceof,'driving_model_id')
-  gcmrip <- attr(ceof,'driving_model_ensemble_member')
-  for (i in 1:attr(ceof,'n.apps')) {
-    xi <- attr(ceof,paste('appendix.',i,sep=''))
-    rcmnames <- c(rcmnames,attr(xi,'model_id'))
-    gcmnames <- c(gcmnames,attr(xi,'driving_model_id'))
-    gcmrip <- c(gcmrip,attr(xi,'driving_model_ensemble_member'))
-    Z[[paste('rcm.',i+1,sep='')]] <- zoo(coredata(xi),order.by=index(xi))
-    clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep="")),plot=FALSE)
-  }
-  attr(Z,'mean') <- clim
-  attr(Z,'model_id') <- list(rcm=rcmnames,gcm=gcmnames,gcm_rip=gcmrip)
-  class(Z) <- c('dsensemble','eof','list')
-  ceof <- Z
-  if(is.null(destfile.ceof)) {
-    destfile.ceof <- paste('ceof.rcm',varid,it,sep=".")
-    if(!is.null(is)) destfile.ceof <- paste(destfile.ceof,".",paste(round(is$lon),collapse="-"),"E.",
-                                    paste(round(is$lat),collapse="-"),"N",sep="")
-    destfile.ceof <- paste(destfile.ceof,"rda",sep='.')
-  }
-  save(ceof,file=destfile.ceof)
-  invisible(ceof)
-}
-
-subset.commonEOF <- function(x,it=NULL,is=NULL,ip=NULL,im=NULL,verbose=FALSE) {
-  if(verbose) print("subset.commonEOF")
-  Y <- subset.dsensemble.multi(x,it=it,is=is,ip=ip,im=im,verbose=verbose)
-  if(is.null(im)) im <- seq(length(x)-2)
-  Y.mean <- attr(x,"mean")[im]
-  if(length(im)==1) Y.mean <- list(Y.mean)
-  if(!is.null(is)) {
-    ok.lon <- attr(x[[2]],"longitude")>=min(is$lon) & 
-      attr(x[[2]],"longitude")<=max(is$lon)
-    ok.lat <- attr(x[[2]],"latitude")>=min(is$lat) & 
-      attr(x[[2]],"latitude")<=max(is$lat)
-    for(i in seq(1,length(Y.mean))) {
-      clim.i <- Y.mean[[i]][ok.lon,ok.lat]
-      Y.mean[[i]] <- clim.i
-    }
-  }
-  attr(Y,"mean") <- Y.mean
-  return(Y)
-}
-  
-map.commonEOF <- function(x,it=NULL,is=NULL,ip=NULL,im=NULL,FUN="mean",plot=FALSE,
-                          colbar=list(pal=NULL,rev=FALSE,n=10,breaks=NULL,show=TRUE),
-                          verbose=FALSE) {
-  if(verbose) print("map.commonEOF")
-  x <- subset.commonEOF(x,it=it,is=is,ip=ip,im=im,verbose=verbose)
-  Y <- map(x,it=it,anomaly=TRUE,plot=FALSE,FUN=FUN,verbose=verbose)
-  if( FUN %in% c("mean","median","q5","q95") ) {
-    if(is.null(im)) im <- seq(length(x)-2)
-    clim <- unlist(coredata(attr(x,"mean")))
-    dim(clim) <- c(ncol(Y),length(im))
-    clim.avg <- apply(clim,1,mean)
-    Y <- Y + aperm(array(rep(clim.avg,nrow(Y)),rev(dim(Y))),c(2,1))
-  }
-  if(plot) map(Y)
-  invisible(Y)
-}
-
 cmip5.urls <- function(experiment='rcp45',varid='tas',
                        url="http://climexp.knmi.nl/CMIP5/monthly/",#path=NULL,
 		       off=FALSE,force=FALSE,verbose=FALSE) {
@@ -294,175 +151,68 @@ cordex.urls <- function(experiment='rcp45',varid='tas',
   return(urlfiles[-1])
 }
 
-metaextract <- function(x=NULL, verbose=FALSE) {
-  if(verbose) print("metaextract")
-  if (is.null(x)) x <- c(getGCMs(verbose=verbose),getRCMs(verbose=verbose))
-  gcms <- names(x)
-  n <- length(gcms)
-  if(verbose) print(gcms)
-  for(i in seq_along(x)) {
-    xx <- x[[gcms[i]]]
-    if(is.null(xx$project_id)) {
-      print(paste("Warning! project_id is not specified in",xx$filename))
-      yi <- NULL
-    } else if(grepl("cmip",tolower(xx$project_id))) {
-      yi <- metaextract.cmip(xx,verbose=verbose)
-    } else if(grepl("cordex",tolower(xx$project_id))) {
-      yi <- metaextract.cordex(xx,verbose=verbose)
-    }
-    if(verbose) print(i)
-    if(i==1) {
-      Y <- matrix(NA,ncol=ncol(yi),nrow=n)
-      colnames(Y) <- colnames(yi)
-      Y[i,] <- yi
-    } else {
-      cn.all <- unique(c(colnames(Y),colnames(yi)))
-      Y.new <- matrix(NA,ncol=length(cn.all),nrow=n)
-      colnames(Y.new) <- cn.all
-      j <- sapply(colnames(Y),function(x) which(cn.all==x))
-      Y.new[1:(i-1),j] <- Y[1:(i-1),]
-      for(cn in colnames(yi)) {
-        Y.new[i,colnames(Y.new)==cn] <- yi[colnames(yi)==cn]
+## Function for generating urls to files available on a THREDDS data server (TDS). 
+## Not sure if it works on other TDSs than the one here at metno.
+## I had problems listing and downloading files from the same location on the metno TDS  
+## and solved it by including two different base URLs, url.base and url.download. 
+## Perhaps this can be done in an easier and more elegant way.
+thredds.urls <- function(url.rel="raw/tas",pattern=".*EUR-11.*.nc",select=NULL,
+                         url.base="http://thredds.met.no/thredds/catalog/postclim/data/CORDEX-EUR11",
+                         url.download="http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11",
+                         verbose=FALSE,...) {
+  if(verbose) print("thredds.urls")
+  url <- url.base
+  if(!is.null(url.rel)) url <- paste(url,url.rel,sep="/")
+  if(is.null(url.download)) url.download <- url.base
+  if(!grepl(url,"catalog.html")) url <- paste(url,"catalog.html",sep="/")
+  continue <- TRUE
+  url.files <- NULL
+  while(continue) {
+    for(u in url) {
+      txt <- readLines(u)
+      txt <- txt[grep("href",txt)]
+      files <- txt[grep(pattern,txt)]
+      if(length(files)>0) {
+        files <- gsub(paste("'>.*",sep=""),"",files)
+        files <- gsub(paste(".*./",sep=""),"",files)
+        u.data <- gsub(url.base,url.download,u)
+        u.data <- gsub("catalog.html","",u.data)
+        url.files <- c(url.files,paste(u.data,files,sep=""))
       }
-      Y <- Y.new
-    }
-  }
-  Y -> meta
-  save(meta,file='metaextract.rda')
-  return(Y)
-}
-
-metaextract.cmip <- function(x=NULL, verbose=FALSE) {
-  if(verbose) print("metaextract.cmip")
-  ## argument 'x' is input from getGCMs, getRCMs, testGCM, etc
-  if (is.null(x)) x <- c(getGCMs(verbose=verbose),getRCMs(verbose=verbose))
-  
-  if(!inherits(x,"list")) x <- list(gcm.1=x)
-  gcms <- names(x)
-  n <- length(gcms)
-  
-  for (i in 1:n) {
-    xx <- x[[gcms[i]]]
-    project_id <- NA; url <- NA; filename <- NA; dim <- NA; dates <- NA
-    var <- NA; longname <- NA; vunit <- NA; vid <- NA
-    res <- NA; lon.rng <- NA; lon.unit <- NA; lat.rng <- NA; lat.unit <- NA
-    experiment_id <- NA; frequency <- NA; creation_date <- NA; tracking_id <- NA
-    gcm <- NA; gcm.rip <- NA; gcm.v <- NA; gcm.realm <- NA
-    if(!is.null(xx$dim)) dim <- paste(names(xx$dim),collapse=",")
-    if(!is.null(names(xx$var))) {
-      var <- names(xx$var)#[!grepl("time",names(xx$var))]
-      if(!is.null(xx$var[[1]]$longname)) longname <- sapply(var, function(x) xx$var[[x]]$longname)
-      if(!is.null(xx$var[[1]]$units)) vunit <- sapply(var, function(x) xx$var[[x]]$units)
-      if(!is.null(xx$var[[1]]$id$id)) vid <- sapply(var, function(x) xx$var[[x]]$id$id)
-    }
-    if(!is.null(names(xx$dim))) {
-      if(!is.null(xx$dim$lat$vals)) {
-        res <- diff(xx$dim$lat$vals)[1]
-        lat.rng <- paste(range(xx$dim$lat$vals),collapse=",")
-      }
-      if(!is.null(xx$dim$lon$vals)) lon.rng <- paste(range(xx$dim$lon$vals),collapse=",")
-      if(!is.null(xx$dim$lat$units)) lat.unit <- xx$dim$lat$units
-      if(!is.null(xx$dim$lon$units)) lon.unit <- xx$dim$lon$units
-    }
-    for(mi in c("url","filename","dates","frequency")) {
-      if(!is.null(xx[[mi]])) eval(parse(text=paste(mi," <- xx$",mi,sep="")))
-    }
-    for(mi in c("project_id","experiment_id","creation_date","tracking_id")) {
-      if(!is.null(xx$model[[mi]])) eval(parse(text=paste(mi," <- xx$model$",mi,sep="")))
-    }
-    if(!is.null(xx$model$model_id)) gcm <- xx$model$model_id
-    if(!is.null(xx$model$parent_experiment_rip)) gcm.rip <- xx$model$parent_experiment_rip
-    if(!is.null(xx$model$version_number)) gcm.v <- xx$model$version_number
-    if(!is.null(xx$model$modeling_realm)) gcm.realm <- xx$model$modeling_realm
-    mx <- data.frame(project_id=project_id, url=url, filename=filename,
-                     dim=paste(dim,collapse=","), dates=dates, var=paste(var,collapse=","),
-                     longname=paste(longname,collapse=","), unit=paste(vunit,collapse=","),
-                     #var_id=paste(vid,collapse=","), 
-                     resolution=res, lon=lon.rng, lon_unit=lon.unit, lat=lat.rng, lat_unit=lat.unit,
-                     experiment_id=experiment_id, frequency=frequency, 
-                     creation_date=creation_date, #tracking_id=tracking_id,
-                     gcm=gcm, gcm_rip=gcm.rip)#, gcm_version=gcm.v, gcm_realm=gcm.realm)
-    meta <- names(mx)
-    m <- length(meta)
-    if (i==1) {
-      X <- matrix(rep("NA",n*m),n,m) ## set up a matrix
-      colnames(X) <- meta; rownames(X) <- gcms
-    }
-    for (ii in 1:m) {
-      if(!is.na(mx[[meta[ii]]])) {
-        y <- as.character(mx[[meta[ii]]])
-        X[i,ii] <- y
+      folders <- txt[grep("Folder",txt)]
+      if(length(folders)>1) {
+        folders <- gsub(".*href='|'>.*","",folders)
+        url <- NULL
+        for(i in seq(2,length(folders))) {
+          u.i <- gsub("catalog.html",folders[i],u)
+          url <- c(url,u.i)
+        } 
+      } else {
+        continue <- FALSE
       }
     }
   }
-  return(X)
+  if(!is.null(select)) url.files <- url.files[select]
+  return(url.files)
 }
 
-metaextract.cordex <- function(x=NULL, verbose=FALSE) {
-  if(verbose) print("metaextract.cordex")
-  ## argument 'x' is input from getGCMs, getRCMs, testGCM, etc
-  if (is.null(x)) x <- c(getGCMs(),getRCMs())
-  
-  if(!inherits(x,"list")) x <- list(gcm.1=x)
-  gcms <- names(x)
-  n <- length(gcms)
-  
-  for (i in 1:n) {
-    xx <- x[[gcms[i]]]
-    project_id <- NA; url <- NA; filename <- NA; dim <- NA; dates <- NA
-    var <- NA; longname <- NA; vunit <- NA; vid <- NA
-    res <- NA; lon.rng <- NA; lon.unit <- NA; lat.rng <- NA; lat.unit <- NA
-    experiment_id <- NA; frequency <- NA; creation_date <- NA; tracking_id <- NA
-    gcm <- NA; gcm.rip <- NA; gcm.v <- NA; gcm.realm <- NA
-    if(!is.null(xx$dim)) dim <- paste(names(xx$dim),collapse=",")[!grepl("bnds",names(xx$var))]
-    if(!is.null(names(xx$var))) {
-      var <- names(xx$var)[!grepl("bnds",names(xx$var))]
-      if(!is.null(xx$var[[1]]$longname)) longname <- sapply(var, function(x) xx$var[[x]]$longname)
-      if(!is.null(xx$var[[1]]$units)) vunit <- sapply(var, function(x) xx$var[[x]]$units)
-      if(!is.null(xx$var[[1]]$id$id)) vid <- sapply(var, function(x) xx$var[[x]]$id$id)
-    }
-    if(!is.null(names(xx$dim))) {
-      if(!is.null(xx$dim$lat$vals)) {
-        res <- diff(xx$dim$lat$vals)[1]
-        lat.rng <- paste(range(xx$dim$lat$vals),collapse=",")
-      }
-      if(!is.null(xx$dim$lon$vals)) lon.rng <- paste(range(xx$dim$lon$vals),collapse=",")
-      if(!is.null(xx$dim$lat$units)) lat.unit <- xx$dim$lat$units
-      if(!is.null(xx$dim$lon$units)) lon.unit <- xx$dim$lon$units
-    }
-    for(mi in c("url","filename","dates")) {
-      if(!is.null(xx[[mi]])) eval(parse(text=paste(mi," <- xx$",mi,sep="")))
-    }
-    for(mi in c("project_id","experiment_id","frequency","creation_date","tracking_id")) {
-      if(!is.null(xx$model[[mi]])) eval(parse(text=paste(mi," <- xx$model$",mi,sep="")))
-    }
-    if(!is.null(xx$model$driving_model_id)) gcm <- xx$model$driving_model_id
-    if(!is.null(xx$model$driving_model_ensemble_member)) gcm.rip <-
-                                         xx$model$driving_model_ensemble_member
-    if(!is.null(xx$model$model_id)) rcm <- xx$model$model_id
-    if(!is.null(xx$model$CORDEX_domain)) rcm.domain <- xx$model$CORDEX_domain
-    if(!is.null(xx$model$rcm_version_id)) rcm.v <- xx$model$rcm_version_id
-    mx <- data.frame(project_id=project_id, url=url, filename=filename,
-                     dim=paste(dim,collapse=","), dates=dates, var=paste(var,collapse=","),
-                     longname=paste(longname,collapse=","), unit=paste(vunit,collapse=","),
-                     #var_id=paste(vid,collapse=","), 
-                     resolution=res, lon=lon.rng, lon_unit=lon.unit, lat=lat.rng, lat_unit=lat.unit,
-                     experiment_id=experiment_id, frequency=frequency, 
-                     creation_date=creation_date, #tracking_id=tracking_id,
-                     gcm=gcm, gcm_rip=gcm.rip, rcm=rcm)#, rcm_domain=rcm.domain, rcm_version=rcm.v)
-    meta <- names(mx)
-    m <- length(meta)
-    if (i==1) {
-      X <- matrix(rep("NA",n*m),n,m) ## set up a matrix
-      colnames(X) <- meta; rownames(X) <- gcms
-    }
-    for (ii in 1:m) {
-      if(!is.na(mx[[meta[ii]]])) {
-        y <- as.character(mx[[meta[ii]]])
-        X[i,ii] <- y
-      }
-    }
-  }
-  return(X)
-}
-
+  #CORDEXList <- c("http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_CNRM-CERFACS-CNRM-CM5_historical_r1i1p1_CLMcom-CCLM4-8-17_v1_day_19500101-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_CNRM-CERFACS-CNRM-CM5_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_ICHEC-EC-EARTH_historical_r12i1p1_CLMcom-CCLM4-8-17_v1_day_19491201-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_ICHEC-EC-EARTH_historical_r3i1p1_DMI-HIRHAM5_v1_day_19510101-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_ICHEC-EC-EARTH_historical_r12i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_ICHEC-EC-EARTH_historical_r1i1p1_KNMI-RACMO22E_v1_day_19500101-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_MOHC-HadGEM2-ES_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051230.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/tas/tas_EUR-11_MPI-M-MPI-ESM-LR_historical_r1i1p1_CLMcom-CCLM4-8-17_v1_day_19491201-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_CNRM-CERFACS-CNRM-CM5_historical_r1i1p1_CLMcom-CCLM4-8-17_v1_day_19500101-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_CNRM-CERFACS-CNRM-CM5_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_ICHEC-EC-EARTH_historical_r12i1p1_CLMcom-CCLM4-8-17_v1_day_19491201-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_ICHEC-EC-EARTH_historical_r3i1p1_DMI-HIRHAM5_v1_day_19510101-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_ICHEC-EC-EARTH_historical_r12i1p1_SMHI-RCA4_v1_day_19700101-20051231.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_ICHEC-EC-EARTH_historical_r1i1p1_KNMI-RACMO22E_v1_day_19500101-20051231.nc", "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_MOHC-HadGEM2-ES_historical_r1i1p1_SMHI-RCA4_v1_day_19700101-20051230.nc", 
+  #                "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/raw/pr/pr_EUR-11_MPI-M-MPI-ESM-LR_historical_r1i1p1_CLMcom-CCLM4-8-17_v1_day_19491201-20051231.nc")
+  #
+  #CORDEXAdjList <- c("http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/adjusted/tas/hist/tasAdjust_EUR-11_ICHEC-EC-EARTH_rcp45_r12i1p1_SMHI-RCA4_v1-METNO-QMAP-MESAN-1989-2010_day_19700101-20051231.nc", 
+  #                   "http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11/adjusted/pr/hist/prAdjust_EUR-11_ICHEC-EC-EARTH_rcp45_r12i1p1_SMHI-RCA4_v1-METNO-QMAP-MESAN-1989-2010_day_19700101-20051231.nc")

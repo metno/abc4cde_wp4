@@ -2,31 +2,26 @@
 ## R-shiny app that presents GCM and RCM data.
 
 library(shiny)
-library(esd)
+library(DECM)
 library(DT)
 #if ('RgoogleMaps' %in% installed.packages()) install.packages('RgoogleMaps')
 
 ## Preparations
 ## source scripts
-path.R <- "../back-end/R"
-path.data <- "../back-end/data"
-source(file.path(path.R,"cds.R"))
-source(file.path(path.R,"plottingtools.R"))
-source(file.path(path.R,"eqc.R"))
 ## load metadata
-load(file.path(path.data,"metaextract.rda"))
+data("metaextract")
 M <- data.frame(list(project_id=meta$project_id, experiment_id=meta$experiment_id, gcm=meta$gcm,
                      rip=meta$gcm_rip, rcm=meta$rcm, var=meta$var, unit=meta$unit, resolution=paste(meta$resolution,"deg"),
                      domain=paste(gsub(","," - ",meta$lon),"E"," / ",paste(gsub(","," - ",meta$lat)),"N",sep=""), 
                      years=gsub(",","-",gsub("-[0-9]{2}","",meta$dates)), url=meta$url))
 ## load and expand commonEOFs
-load(file.path(path.data,"ceof.gcm.tas.annual.rda"))
+data("ceof.gcm.tas.annual")
 ceof.tas.gcms <- ceof
-load(file.path(path.data,"ceof.gcm.pr.annual.rda"))
+data("ceof.gcm.pr.annual")
 ceof.pr.gcms <- ceof
-load(file.path(path.data,"ceof.rcm.tas.annual.rda"))
+data("ceof.rcm.tas.annual")
 ceof.tas.rcms <- ceof
-load(file.path(path.data,"ceof.rcm.pr.annual.rda"))
+data("ceof.rcm.pr.annual")
 ceof.pr.rcms <- ceof
 
 selectrowindex <- 1
@@ -102,7 +97,7 @@ shinyServer(function(input, output) {
   output$dtdpr <- renderPlot({
     ceof.tas <- select.ceof(input$table_rows_selected,"temp")
     ceof.pr <- select.ceof(input$table_rows_selected,"precip")
-    dtdpr(ceof.tas=ceof.tas,ceof.pr=ceof.pr,im=attr(ceof.tas,"im"),new=FALSE)
+    EQC.scatterplot(ceof.tas=ceof.tas,ceof.pr=ceof.pr,im=attr(ceof.tas,"im"),new=FALSE)
   })
 
   output$rawdata <- DT::renderDataTable({
