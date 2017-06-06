@@ -10,7 +10,6 @@ Depends:
     zoo,
     esd,
     PCICt,
-    raster,
     rgdal,
     R (>= 2.10.0)
 Description: The package contains R functions for retrieving and organising data, extracting metadata into a metadatabase.
