@@ -1,10 +1,18 @@
+#Helper function to find files linux environment (add Windows counterpart)
+find.file <- function(filename) {
+  command <- paste("find -L $HOME -name",filename,sep=" ")
+  fullpath <- system(command,intern=TRUE)
+  if(length(fullpath)==0) return(FALSE)
+  return(fullpath)
+}
+
 #Search and read a shapefile
-get.shapefile <- function(filename=NULL,with.path=FALSE){
+get.shapefile <- function(filename,with.path=FALSE){
   fullname <- filename
   if(!with.path){
     fullname <- find.file(filename)
   }
-  readOGR(fullname,verbose=F)
+  readOGR(fullname,verbose=FALSE)
 }
 
 # Provides path to local files with reference data
@@ -52,7 +60,7 @@ getERA <- function(variable.name,start=1979,end=2016,griddes="cmip_1.25deg_to_2.
     type <- "an"
     commands <- c("-f","nc","-copy","-remapcon","-chname")
     input <- c("","","",griddes,"2t,tas")
-  }else if(any(match(c("pre","prc","prec","precipitation","pr"),variable.name,nomatch=0))){
+  } else if(any(match(c("pre","prc","prec","precipitation","pr"),variable.name,nomatch=0))){
     varID<- "228.128"
     stream <- "mdfa"
     steps <- "12-24/24-36" # Select the 24 and 36h 12-hour long forecast in order to reduce the spin-up effect.
@@ -116,7 +124,7 @@ getCRU <- function(username,passwd,variable="tmp",version="4.00",griddes="cmip_1
 }
 
 #Get monthly CFSR data and interpolate it to common 2.5 degree grid.
-getCFSR <- function(variable="tas",destfile=NULL,lon=NULL,lat=NULL,verbose=T,griddes="cmip_1.25deg_to_2.5deg.txt"){
+getCFSR <- function(variable="tas",destfile=NULL,lon=NULL,lat=NULL,verbose=TRUE,griddes="cmip_1.25deg_to_2.5deg.txt"){
   url.path <- "https://climexp.knmi.nl/CFSR"
   griddes <- find.file(griddes)
   if(variable=="tas"){
@@ -129,6 +137,7 @@ getCFSR <- function(variable="tas",destfile=NULL,lon=NULL,lat=NULL,verbose=T,gri
     input <- c("","","",griddes,"","PRATE_surface,pr")
   }
   if(!file.exists(filename)) download.file(paste(url.path,filename,sep="/"),destfile=filename)
+  browser()
   if(is.null(destfile)) destfile <- paste(sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),"mon.nc",sep="_")
   if(!file.exists(destfile)) cdo.command(commands,input,infile=filename,outfile=destfile)
   X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)

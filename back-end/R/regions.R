@@ -20,15 +20,6 @@ getPolCoords <- function(region,shape="",destfile="coords.txt"){
   write(t(pol.coords),file=destfile,ncolumns = 2)
 }
 
-
-#Helper function to find files linux environment (add Windows counterpart)
-find.file <- function(filename) {
-  command <- paste("find -L $HOME -name",filename,sep=" ")
-  fullpath <- system(command,intern=TRUE)
-  if(length(fullpath)==0) return(FALSE)
-  return(fullpath)
-}
-
 #apply mask to a zoo object by setting values outside the mask to NA
 mask.zoo <- function(zoo.object,mask){
   mask <- flip(mask,direction='y')
@@ -37,7 +28,7 @@ mask.zoo <- function(zoo.object,mask){
 }
 
 #Get grid boxes belonging to a SREX region and calculate some basic statistics for it.
-get.srex.region <- function(destfile,region=NULL,print.srex=F,verbose=FALSE) {
+get.srex.region <- function(destfile,region=NULL,print.srex=FALSE,verbose=FALSE) {
   if(verbose) print("get.srex.region")
   home <- system("echo $HOME",intern=TRUE)
   shape <-  get.shapefile("referenceRegions.shp")
@@ -46,7 +37,8 @@ get.srex.region <- function(destfile,region=NULL,print.srex=F,verbose=FALSE) {
   if(is.null(region)){
     for (i in 1:length(levels(shape$LAB))){
       polygon <- shape[i,]
-      mask <- gen.mask.srex(destfile=destfile, mask=polygon, ind=F, inverse=F, mask.values=1)
+      mask <- gen.mask.srex(destfile=destfile, mask=polygon, 
+                            ind=FALSE, inverse=FALSE, mask.values=1)
       if(verbose){
         if(i==1){
           plot(shape)
@@ -65,7 +57,8 @@ get.srex.region <- function(destfile,region=NULL,print.srex=F,verbose=FALSE) {
     }  
   } else {
     polygon <- shape[levels(shape$LAB)==region,]
-    mask <- gen.mask.srex(destfile=destfile, mask=polygon, ind=F, inverse=F, mask.values=1)
+    mask <- gen.mask.srex(destfile=destfile, mask=polygon, ind=FALSE, 
+                          inverse=FALSE, mask.values=1)
     if(verbose) {
       plot(shape)
       plot.mask <- mask
