@@ -3,22 +3,48 @@
 #
 #Olle Räty 2017
 
+get_scriptpath <- function() {
+  # location of script can depend on how it was invoked:
+  # source() and knit() put it in sys.calls()
+  path <- NULL
+  if(Sys.getenv("RSTUDIO") == "1"){
+    path <- dirname(rstudioapi::getActiveDocumentContext()$path)
+  }else if(!is.null(sys.calls())) {
+    # get name of script - hope this is consisitent!
+    path <- as.character(sys.call(1))[2] 
+    # make sure we got a file that ends in .R, .Rmd or .Rnw
+    if (grepl("..+\\.[R|Rmd|Rnw]", path, perl=TRUE, ignore.case = TRUE) )  {
+      return(path)
+    } else { 
+      message("Obtained value for path does not end with .R, .Rmd or .Rnw: ", path)
+    }
+  } else{
+    # Rscript and R -f put it in commandArgs
+    args <- commandArgs(trailingOnly = FALSE)
+  }
+  return(path)
+}
+
+sourcePrototypeFile <- function(file,current.path){
+  print(file)
+  repository.root <- gsub("(abc4cde_wp4).*","\\1",current.path)
+  print(paste("find",repository.root,"-name",file,sep=" "))
+  full.path <-system(paste("find",repository.root,"-name",file,sep=" "),intern=T)
+  print(full.path)
+  source(full.path)
+}
+
 #Set environmental variables
-Sys.setenv(EXTERNAL_DATA = "/home/ubuntu/Data")
-Sys.setenv(PROTOTYPE_SCRIPT = "/home/ubuntu/abc4cde_wp4/R-scripts")
-Sys.setenv(PROTOTYPE_BACKEND = "/home/ubuntu/abc4cde_wp4/back-end")
-Sys.setenv(PROTOTYPE_BACKEND_R = "/home/ubuntu/abc4cde_wp4/back-end/R")
-Sys.setenv(PROTOTYPE_FRONTEND = "/home/ubuntu/abc4cde_wp4/front-end")
-Sys.setenv(PROTOTYPE_DATA = "/home/ubuntu/abc4cde_wp4/back-end/data")
+current_path <- get_scriptpath()
+setwd(current_path)
+sourcePrototypeFile("cds.R",current_path)
 
 suppressPackageStartupMessages({
   require(optparse)
   require(esd)
 })
 
-suppressPackageStartupMessages({
-  source(paste(Sys.getenv("PROTOTYPE_BACKEND_R"),"cds.R",sep="/"))
-})
+Sys.setenv(EXTERNAL_DATA="/home/ubuntu/Data/Data")
 
 #Command-line parameters
 option_list <- list(
@@ -43,6 +69,7 @@ option_list <- list(
 )
 
 opt <- parse_args(OptionParser(option_list = option_list))
+EXTERNAL_DATA = "/home/ubuntu/Data"
 
 #Function to calculate basic statistics
 calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), variable="tas", nfiles=5,
@@ -59,7 +86,7 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
   if(file.exists(store.file))store <- readRDS(store.file)
 
   if(!is.null(reference)){
-    ref.file <- getReference(reference,variable)
+    ref.file <- getReference(reference,variable,path=Sys.getenv("EXTERNAL_DATA"))
     store.name <- paste(reference,variable,sep=".")
     store[[store.name]]$spatial.sd <- c(cdo.spatSd(ref.file,period), cdo.spatSd(ref.file,period,seasonal=T))
     store[[store.name]]$mean <- c(cdo.mean(ref.file,period), cdo.mean(ref.file,period,seasonal=T))
@@ -82,7 +109,7 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
   }
   
   for(i in start:end){
-    gcm.file <- get.name(i,variable)
+    gcm.file <- get.name(i,variable,path=Sys.getenv("EXTERNAL_DATA"))
     if(!file.exists(gcm.file)) download.file(cmip5.urls(i,variable), destfile=paste(Sys.getenv("EXTERNAL_DATA"),gcm.file,sep="/"))
     store.name <- paste("gcm",i,sep=".")
     store[[store.name]]$spatial.sd <- c(cdo.spatSd(gcm.file,period),cdo.spatSd(gcm.file,period,seasonal=T))

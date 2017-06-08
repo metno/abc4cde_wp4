@@ -3,8 +3,9 @@
 ##
 
 #Helper function to find files linux environment (add Windows counterpart)
-find.file <- function(filename){
-  command <- paste("find -L $HOME -name",filename,sep=" ")
+find.file <- function(filename,path=NULL){
+  if(is.null(path))path="$HOME"
+  command <- paste("find -L ",path," -name",filename,sep=" ")
   fullpath <- system(command,intern=T)
   if(length(fullpath)==0)return(FALSE)
   return(fullpath)
@@ -35,8 +36,9 @@ cdo.command <- function(commands,input,infile,outfile,intern=F){
   for(i in 1:length(separators)){
     cdo.coms[i]  <- paste(commands[i],input[i],sep=separators[i])
   }
+  if(length(infile)>1)infile <- paste(infile,collapse=" ")
   system.command <- paste("cdo",paste(cdo.coms,collapse=" "),infile,outfile,sep=" ")
-
+  print(system.command)
   if(intern){
     output <- system(system.command,wait=T,intern=T)
     return(output)
@@ -80,13 +82,13 @@ get.srex.region <- function(destfile,region=NULL,print.srex=F,verbose=F){
   }else{
     polygon <- shape[levels(shape$LAB)==region,]
     mask <- gen.mask.srex(destfile=destfile, mask=polygon, ind=F, inverse=F, mask.values=1)
-   if(verbose){
+    if(verbose){
       plot(shape)
       plot.mask <- mask
       extent(plot.mask) <- c(-180,180,-90,90)
       projection(plot.mask) <- projection(shape)
       plot(plot.mask,col=rainbow(100, alpha=0.35)[sample(1:100,1)],legend=F,add=T)
-   }
+    }
     name <- levels(shape$NAME)[i]
     X.region <- mask.zoo(X,mask)
     srex[[name]]$name <- name
@@ -94,11 +96,11 @@ get.srex.region <- function(destfile,region=NULL,print.srex=F,verbose=F){
     srex[[name]]$area.mean <- aggregate.area(X.region,FUN="mean",na.rm=T)
     srex[[name]]$area.sd <- aggregate.area(X.region,FUN="sd",na.rm=T) 
   }
-
+  
   if(print.srex){
     print("Region names in alphabetical order and the corresponding label to be used when selecting the region:")
     print(data.frame(NAME=gsub("\\[[^\\]]*\\]", "", levels(shape$NAME), perl=TRUE),
-                        LABEL=levels(shape$LAB)))
+                     LABEL=levels(shape$LAB)))
     return()
   }
   return(srex)
@@ -125,6 +127,53 @@ gen.mask.srex <- function(destfile, mask.polygon=NULL, ind=F, inverse=F, mask.va
   mask.raster[indices] <- mask.values
   if(ind)return(indices)
   return(mask.raster)
+}
+
+getCORDEX <- function(variable="pr",path.out="/home/ubuntu/Data1/Data/CORDEX_full",bias.cor=F){
+  path <- "http://thredds.met.no/thredds/fileServer/postclim/data/CORDEX-EUR44i_mon_4DECM/"
+  file.list <- readLines( "./CORDEX_list.txt" )
+  files <- file.list[ grep( variable, file.list ) ]
+  if(!bias.cor){
+    files <- files[-grep(paste(variable, "Adjust", sep=""), files)]
+  }else{
+    files <- files[grep(paste(variable, "Adjust", sep=""), files)]
+  } 
+  
+  file.split <- strsplit(files,"_")
+  if(bias.cor){
+    rcm <- unlist(lapply(file.split,"[",8))
+    method <- unlist(lapply(file.split,"[",9))
+    loc.unique.1 <- match(method,unique(method))
+    loc.unique.2 <- match(rcm,unique(rcm))
+  }else{
+    gcm <- unlist(lapply(file.split,"[",5))
+    rcm <- unlist(lapply(file.split,"[",8))
+    loc.unique.1 <- match(gcm,unique(gcm))
+    loc.unique.2 <- match(rcm,unique(rcm))
+  }
+  
+  loc.pairs <- unique(cbind(loc.unique.1,loc.unique.2))
+  chunk.path <- file.path(path.out,"chunk_files")
+  dir.create(file.path(chunk.path), showWarnings = FALSE)
+  chunk.files <- list.files(chunk.path,full.names=T)
+  for(i in 1:dim(loc.pairs)[1]){
+    if(bias.cor){
+      file.pos <- which(method==unique(method)[loc.pairs[i,1]] & rcm==unique(rcm)[loc.pairs[i,2]])
+    }else{
+      file.pos <- which(gcm==unique(gcm)[loc.pairs[i,1]] & rcm==unique(rcm)[loc.pairs[i,2]])
+    }
+    infiles <- paste(path,files[file.pos],sep="")
+    destfiles <- paste(chunk.path,files[file.pos], sep="/")
+    print(destfiles)
+    if(!any(match(destfiles,chunk.files)))mapply(download.file,infiles,destfiles)
+    output.period <- paste(gsub('.*(_[0-9]+).*','\\1',destfiles[1]),
+                           gsub('.*-([0-9]+).*','\\1',destfiles[2]),sep="-")
+    out.names <- gsub("_[0-9]+-[0-9]+",output.period,files[file.pos[2]])
+    outfile <- paste(path.out,out.names,sep="/")
+    print(outfile)
+    if(!file.exists(outfile)) cdo.command(commands="mergetime",input="",infile=destfiles,outfile=outfile)
+    
+  }
 }
 
 getatt <- function(fname) {
@@ -250,23 +299,33 @@ getCFSR <- function(variable="tas",destfile=NULL,lon=NULL,lat=NULL,verbose=T,gri
 
 #Get daily EOBS data and convert it to monthly averages. Version and resolution
 #selection not implemented yet.
-getEOBS <- function(variable="tas", destfile=NULL, resolution="0.50", version="14"){
-  url.path <- "http://www.ecad.eu/download/ensembles/data/Grid_0.50deg_reg"
+getEOBS <- function(variable="tas", destfile=NULL, destpath=".", resolution="0.50", version="14",lon=NULL,lat=NULL,verbose=F){
+
+  if(resolution=="0.50" & resolution=="0.25"){
+    type <- "reg"
+  }else{
+    type <- "rot"
+  }
+  url.path <- paste("http://www.ecad.eu/download/ensembles/data/Grid_",resolution,"deg_",type,sep="")
+  
   if(variable=="tas"){
-    filename <- "tg_0.50deg_reg_v14.0.nc.gz"
+    filename <- paste("tg_",resolution,"deg_",type,"_v15.0.nc.gz",sep="")
   }else if(variable=="pr"){
-    filename <- "rr_0.50deg_reg_v14.0.nc.gz"
+    filename <- paste("rr_",resolution,"deg_",type,"_v15.0.nc.gz",sep="")
   }else{
     return("Not implemented yet!")
   }
-  if(!file.exists(filename)) download.file(paste(url.path,filename,sep="/"),destfile=filename)
-  gunzip(filename)
+
+  infile <- paste(destpath,filename,sep="/")
+  if(!file.exists(infile))download.file(paste(url.path,filename,sep="/"),destfile=infile)
   filename <- sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE)
-  if(is.null(destfile)) destfile <- paste(paste(system("echo $EXTERNAL_DATA",intern=T),sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),sep="/"),"mon.nc",sep="_")
+  if(!file.exists(paste(destpath,filename,sep="/")))gunzip(infile)
+  
+  if(is.null(destfile)) destfile <- paste(paste(destpath,sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),sep="/"),"mon.nc",sep="_")
   print(destfile)
   commands <- c("-f","nc","-copy","-monavg")
   input <- c("","","","")
-  if(!file.exists(destfile)) cdo.command(commands,input,infile=filename,outfile=destfile)
+  if(!file.exists(destfile)) cdo.command(commands,input,infile=paste(destpath,filename,sep="/"),outfile=destfile)
   X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
   cid <- getatt(destfile) 
   cid$url <- paste(url.path,filename,sep="/")
@@ -282,7 +341,7 @@ getEOBS <- function(variable="tas", destfile=NULL, resolution="0.50", version="1
 ## Generic function to retrieve climate model (CM) file from the KNMI ClimateExplorer
 getCM <- function(url=NULL,destfile='CM.nc',lon=NULL,lat=NULL,force=FALSE,verbose=FALSE) {
   if(verbose) print("getCM")
-  ## Retrieves the data
+  ## Retrieve the data
   if(is.null(url)) url <-
     'https://climexp.knmi.nl/CMIP5/monthly/tas/tas_Amon_ACCESS1-0_historical_000.nc'
   if (file.exists(destfile) & !force) {
