@@ -17,6 +17,8 @@ driving_model_ids <- unique(sapply(mdList,function(X) X$globat$driving_model_id)
 #Make a simple data selector
 ##AD: NEED TO ADD VARIABLE SELECTION HERE!
 navbarPage("Data selector",
+  header=img(src="banner_c3s.png", 
+   style="width:700px; float:left; margin-bottom:50px; margin-left:20px"),
   tabPanel("This is a prototype, e.g. no distinction btw. variables so far.", 
   #Data selection drop-downs
     fluidRow(column(3,selectInput("project",label = "Project",c("All",project_ids))),

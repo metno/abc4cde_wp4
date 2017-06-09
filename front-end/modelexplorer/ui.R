@@ -6,6 +6,8 @@ library(DECM)
 
 navbarPage(title = 'Climate model data explorer (Beta version)', 
            id = 'x0',
+           header=img(src="banner_c3s.png", 
+                      style="width:700px; float:left; margin-bottom:50px; margin-left:20px"),
            tabPanel('Browse', 
                     dataTableOutput('glossary'),                    
                     h3(textOutput('text')),
