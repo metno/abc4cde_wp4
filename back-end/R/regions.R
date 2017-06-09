@@ -14,7 +14,8 @@ getPrudenceCoords <- function(prudence,region,destfile="coords.txt"){
 
 # Transform the coordinates of a region from Cartesian to polar. 
 # There is most likely a version of this in esd. 
-getPolCoords <- function(region,shape="",destfile="coords.txt"){
+getPolCoords <- function(region,shape=NULL,destfile="coords.txt"){
+  if(is.null(shape)) shape <- get.shapefile("referenceRegions.shp")
   if(is.character(region)) region <- which(as.character(shape$LAB)==region)
   pol.coords <- coordinates(shape@polygons[[region]]@Polygons[[1]])
   write(t(pol.coords),file=destfile,ncolumns = 2)
@@ -46,14 +47,15 @@ get.srex.region <- function(destfile,region=NULL,print.srex=FALSE,verbose=FALSE)
         plot.mask <- mask
         extent(plot.mask) <- c(-180,180,-90,90)
         projection(plot.mask) <- projection(shape)
-        plot(plot.mask,col=rainbow(100, alpha=0.35)[sample(1:100,1)],legend=F,add=T)
+        plot(plot.mask,col=rainbow(100, alpha=0.35)[sample(1:100,1)],
+             legend=FALSE,add=TRUE)
       }
       name <- levels(shape$NAME)[i]
       X.region <- mask.zoo(X,mask)
       srex[[name]]$name <- name
       srex[[name]]$label <- levels(shape$LAB)[i]
-      srex[[name]]$area.mean <- aggregate.area(X.region,FUN="mean",na.rm=T)
-      srex[[name]]$area.sd <- aggregate.area(X.region,FUN="sd",na.rm=T)
+      srex[[name]]$area.mean <- aggregate.area(X.region,FUN="mean",na.rm=TRUE)
+      srex[[name]]$area.sd <- aggregate.area(X.region,FUN="sd",na.rm=TRUE)
     }  
   } else {
     polygon <- shape[levels(shape$LAB)==region,]
@@ -64,7 +66,8 @@ get.srex.region <- function(destfile,region=NULL,print.srex=FALSE,verbose=FALSE)
       plot.mask <- mask
       extent(plot.mask) <- c(-180,180,-90,90)
       projection(plot.mask) <- projection(shape)
-      plot(plot.mask,col=rainbow(100, alpha=0.35)[sample(1:100,1)],legend=F,add=T)
+      plot(plot.mask,col=rainbow(100, alpha=0.35)[sample(1:100,1)],
+           legend=FALSE,add=TRUE)
     }
     name <- levels(shape$NAME)[i]
     X.region <- mask.zoo(X,mask)
@@ -73,7 +76,6 @@ get.srex.region <- function(destfile,region=NULL,print.srex=FALSE,verbose=FALSE)
     srex[[name]]$area.mean <- aggregate.area(X.region,FUN="mean",na.rm=T)
     srex[[name]]$area.sd <- aggregate.area(X.region,FUN="sd",na.rm=T) 
   }
-  
   if(print.srex) {
     print("Region names in alphabetical order and the corresponding label to be used when selecting the region:")
     print(data.frame(NAME=gsub("\\[[^\\]]*\\]", "", levels(shape$NAME), perl=TRUE),
@@ -84,8 +86,10 @@ get.srex.region <- function(destfile,region=NULL,print.srex=FALSE,verbose=FALSE)
 }
 
 # Create a raster mask for the selected SREX sub-region from the CMIP5 netcdf file.
-gen.mask.srex <- function(destfile, mask.polygon=NULL, ind=FALSE, inverse=FALSE, mask.values=1){
-  print(destfile)
+gen.mask.srex <- function(destfile, mask.polygon=NULL, ind=FALSE, inverse=FALSE, 
+                          mask.values=1, verbose=FALSE) {
+  if(verbose) print("gen.mask.srex")
+  if(verbose) print(destfile)
   r <- raster(destfile)
   r <- setValues(r,NA)
   extent.r <- extent(r)

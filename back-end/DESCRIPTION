@@ -1,6 +1,6 @@
 Package: DECM
-Version: 0.7
-Date: May 29 2017
+Version: 0.71
+Date: June 9 2017
 Title: Climate Data Storage Evaluation and Quality Control.
 Author: Kajsa M. Parding, Olle Raty <olle.raty@helsinki.fi>, Andreas Dobler <andreas.dobler@met.no>, 
         and Rasmus E. Benestad <rasmus.benestad@met.no>
@@ -11,6 +11,7 @@ Depends:
     esd,
     PCICt,
     rgdal,
+    raster,
     R (>= 2.10.0)
 Description: The package contains R functions for retrieving and organising data, extracting metadata into a metadatabase.
 License: GPL (>= 2)

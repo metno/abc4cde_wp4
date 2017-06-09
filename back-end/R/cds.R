@@ -17,9 +17,15 @@ getCM <- function(url=NULL,destfile='CM.nc',lon=NULL,lat=NULL,force=FALSE,verbos
   ## Retrieves the data
   if(is.null(url)) url <-
     'https://climexp.knmi.nl/CMIP5/monthly/tas/tas_Amon_ACCESS1-0_historical_000.nc'
-  if (!file.exists(destfile)|force) lok <- try(download.file(url=url, destfile=destfile))
-  if (inherits(loc,"try-error")) return()
-  X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
+  if (file.exists(destfile) & !force) {
+    X <- try(retrieve(destfile,lon=lon,lat=lat,verbose=verbose))
+    if (inherits(X,"try-error")) force <- TRUE # If downloaded file is incomplete, force new download
+  }
+  if (!file.exists(destfile) | force) {
+    lok <- try(download.file(url=url, destfile=destfile))
+    if (inherits(lok,"try-error")) return()
+    X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
+  }
   ## Collect information stored in the netCDF header
   cid <- getatt(destfile)
   ## Extract a time series for the area mean for 

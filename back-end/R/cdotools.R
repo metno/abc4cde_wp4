@@ -1,7 +1,8 @@
 # Calculate the mean value over time with CDO. Faster than in R.
 # Is this function affected by the error that Abdelkader discovered with -timmean?
 
-cdo.mean <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) {
+cdo.mean <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE,
+                     is.temp=TRUE,verbose=FALSE) {
   
   commands <- c("-fldmean","-timmean","-selyear")
   input <- c("","",paste(period,collapse="/"))
@@ -20,14 +21,14 @@ cdo.mean <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) {
   command <- ("output")
   input <- c("")
   
-  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=T))
+  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=TRUE))
   if(seasonal) {
     names(out) <- c("djf","mam","jja","son")
   } else {
     names(out) <- "ann"
   } 
-  
-  if(out>200) out <- out-273.15
+  # If applying to e.g. slp data, set is.temp to FALSE to skip this correction:
+  if(out>200 & is.temp) out <- out-273.15 
   system(paste("rm",out.file,sep=" "))
   invisible(out)
 }
@@ -81,7 +82,7 @@ cdo.spatSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) 
   
   command <- ("output")
   input <- c("")
-  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=T))
+  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=TRUE))
   if(seasonal){
     names(out) <- c("djf","mam","jja","son")
   }else{
@@ -119,7 +120,7 @@ cdo.gridcor <- function(model.file,reference.file,period=c(1981,2010),mask=NULL,
   
   command <- ("output")
   input <- c("")
-  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=T))
+  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=TRUE))
   if(seasonal){
     names(out) <- c("djf","mam","jja","son")
   }else{
