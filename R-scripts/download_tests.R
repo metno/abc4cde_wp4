@@ -1,4 +1,4 @@
-setwd(system("find $HOME -name download_tests.R -exec dirname {} \\;",intern=T))
+setwd(system("find $HOME -name download_tests.R -exec dirname {} \\;",intern=TRUE))
 #cds.path <- system("find $HOME -name cds.R -exec dirname {} \\;",intern=T)
 #source(cds.path)
 require(DECM)
@@ -19,3 +19,4 @@ eobs.pr <- getEOBS(variable="pr")
 
 ## Test for downloading ERA interim data
 tas.ERA <- getERA(variable="tas",verbose=TRUE)
+tas.ERA <- getERA(variable="pr",verbose=TRUE)

@@ -1,22 +1,21 @@
 #!/usr/bin/env Rscript
-
+setwd(system("find $HOME -name download_tests.R -exec dirname {} \\;",intern=TRUE))
 ## To install DECM package: 
 ## R CMD INSTALL abc4cde_wp4/back-end 
 ## Requires rgdal, raster, esd (zoo, ncdf4), PCICt 
 library(DECM)
 
 opt <- list(verbose=TRUE,reference="era",it=c(1981,2010),variable="tas",
-            nfiles=1,continue=FALSE,mask="coords.txt",help=FALSE)
+            nfiles=9,continue=FALSE,mask="coords.txt",help=FALSE)
 
 #Function to calculate basic statistics
 calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), variable="tas", 
                                       nfiles=5, continue=TRUE, verbose=FALSE, mask="coords.txt") {
-  
   shape <- get.shapefile("referenceRegions.shp")
   srex.regions <- as.character(shape$LAB)
-  store.file <- paste("statistics.cmip", reference, variable, paste(period, collapse="-"), "Rdata", sep=".")
+  store.file <- paste("statistics.cmip", reference, variable, paste(period, collapse="-"), "rda", sep=".")
   store <- list()
-  if(file.exists(store.file)) store <- readRDS(store.file)
+  if(file.exists(store.file)) load(store.file)
   
   ref.file <- getReference(reference,variable)
   reference.raster <- raster(ref.file)
@@ -34,16 +33,16 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
   ngcm <- length(cmip5.urls(varid=variable))
   start <- 1
   if(continue && file.exists(store.file))
-    start <- as.numeric(tail(sub('.*\\.', '', names(store), perl=T),n=1))+1
+    start <- as.numeric(tail(sub('.*\\.', '', names(store), perl=TRUE),n=1))+1
   if(nfiles=="all"){
     end <- ngcm
-  }else{
+  } else {
     end <- min(start+nfiles-1,ngcm) 
   }
   
   for(i in start:end){
-    gcm.file <- getGCMs(i,variable)
-    if(!file.exists(gcm.file)) download.file(cmip5.urls(i,variable), destfile=paste(system("echo $PROTOTYPE_DATA"),gcm.file,sep="/"))
+    X <- getGCMs(select=i,varid=variable)
+    gcm.file <- X[[1]]$filename
     store.name <- paste("gcm",i,sep=".")
     store[[store.name]]$spatial.sd <- c(cdo.spatSd(gcm.file,period),cdo.spatSd(gcm.file,period,seasonal=T))
     store[[store.name]]$mean <- c(cdo.mean(gcm.file,period),cdo.mean(gcm.file,period,seasonal=T))
@@ -54,22 +53,21 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
       store[[store.name]][[srex.regions[j]]]$mean <- c(cdo.mean(gcm.file,period,mask=mask), cdo.mean(gcm.file,period,mask=mask,seasonal=T))
       store[[store.name]][[srex.regions[j]]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period,mask=mask), cdo.gridcor(gcm.file,ref.file,period,mask=mask,seasonal=T))
     }
-    saveRDS(store,store.file)
+    save(file=store.file,store)
     gc()
-    if(i==ngcm)return(store)
+    if(i==ngcm) return(store)
   }
   return(store)
 }
 
-#Function to calculate basic statistics
 calculate.statistics.cordex <- function(reference="era", period=c(1981,2010), variable="tas", 
                                         nfiles=5, continue=TRUE, verbose=FALSE, mask="coords.txt"){
   
   region <- read.csv(find.file("RegionSpecifications.csv"))
   region.id <- as.character(region$Code)
-  store.file <- paste("statistics.cordex", reference, variable, paste(period, collapse="-"), "Rdata", sep=".")
+  store.file <- paste("statistics.cordex", reference, variable, paste(period, collapse="-"), "rda", sep=".")
   store <- list()
-  if(file.exists(store.file)) store <- readRDS(store.file)
+  if(file.exists(store.file)) load(store.file)
   
   ref.file <- getReference(reference,variable)
   reference.raster <- raster(ref.file)
@@ -78,7 +76,7 @@ calculate.statistics.cordex <- function(reference="era", period=c(1981,2010), va
   store[[store.name]]$spatial.sd <- c(cdo.spatSd(ref.file,period), cdo.spatSd(ref.file,period,seasonal=T))
   store[[store.name]]$mean <- c(cdo.mean(ref.file,period), cdo.mean(ref.file,period,seasonal=T))
   
-  for(i in 1:length(region.id)){
+  for(i in 1:length(region.id)) {
     getPolCoords(i,shape=shape,destfile=mask)
     store[[ store.name ]][[ srex.regions[i] ]]$spatial.sd <- c(cdo.spatSd(ref.file,period,mask=mask), cdo.spatSd(ref.file,period,mask=mask,seasonal=T))
     store[[ store.name ]][[ srex.regions[i] ]]$mean <- c(cdo.mean(ref.file,period,mask=mask), cdo.mean(ref.file,period,mask=mask,seasonal=T))
@@ -88,15 +86,15 @@ calculate.statistics.cordex <- function(reference="era", period=c(1981,2010), va
   start <- 1
   if(continue && file.exists(store.file))
     start <- as.numeric(tail(sub('.*\\.', '', names(store), perl=T),n=1))+1
-  if(nfiles=="all"){
+  if(nfiles=="all") {
     end <- ngcm
-  }else{
+  } else {
     end <- min(start+nfiles-1,ngcm) 
   }
   
   for(i in start:end){
-    gcm.file <- getRCMs(i,variable)
-    if(!file.exists(gcm.file)) download.file(cordex.urls(i,variable), destfile=paste(system("echo $PROTOTYPE_DATA"),gcm.file,sep="/"))
+    X <- getRCMs(select=i,varid=variable)
+    gcm.file <- X[[1]]$filename
     store.name <- paste("gcm",i,sep=".")
     store[[store.name]]$spatial.sd <- c(cdo.spatSd(gcm.file,period),cdo.spatSd(gcm.file,period,seasonal=T))
     store[[store.name]]$mean <- c(cdo.mean(gcm.file,period),cdo.mean(gcm.file,period,seasonal=T))
@@ -107,9 +105,9 @@ calculate.statistics.cordex <- function(reference="era", period=c(1981,2010), va
       store[[store.name]][[srex.regions[j]]]$mean <- c(cdo.mean(gcm.file,period,mask=mask), cdo.mean(gcm.file,period,mask=mask,seasonal=T))
       store[[store.name]][[srex.regions[j]]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period,mask=mask), cdo.gridcor(gcm.file,ref.file,period,mask=mask,seasonal=T))
     }
-    saveRDS(store,store.file)
+    save(file=store.file,store)
     gc()
-    if(i==ngcm)return(store)
+    if(i==ngcm) return(store)
   }
   return(store)
 }
@@ -117,3 +115,16 @@ calculate.statistics.cordex <- function(reference="era", period=c(1981,2010), va
 calculate.statistics.cmip(reference=opt$reference, period=opt$it, variable=opt$variable, 
                           nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
                           mask=opt$mask)
+
+calculate.statistics.cmip(reference=opt$reference, period=opt$it, variable="precip", 
+                          nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
+                          mask=opt$mask)
+
+calculate.statistics.cmip(reference=opt$reference, period=opt$it, variable=opt$variable, 
+                          nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
+                          mask=opt$mask)
+
+calculate.statistics.cmip(reference=opt$reference, period=opt$it, variable=opt$variable, 
+                          nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
+                          mask=opt$mask)
+
