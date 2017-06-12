@@ -31,11 +31,11 @@ navbarPage(title = 'Climate model data explorer (Beta version)',
                            selected = "Temperature")),
 		                column(3,
                     plotOutput("map"))
-           ),
-           tabPanel('Scatterplot of climate change', 
-                    #textInput('x2', 'Row ID'), 
-                    plotOutput("dtdpr")
            )#,
+           #tabPanel('Scatterplot of climate change', 
+           #         #textInput('x2', 'Row ID'), 
+           #         plotOutput("dtdpr")
+           #)#,
            #tabPanel('View data', 
            #         #textInput('x2', 'Row ID'), 
            #         DT::dataTableOutput("selsta",width = 'auto'),
