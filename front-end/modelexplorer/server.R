@@ -16,12 +16,12 @@ M <- data.frame(list(project_id=meta$project_id, experiment_id=meta$experiment_i
                      domain=paste(gsub(","," - ",meta$lon),"E"," / ",paste(gsub(","," - ",meta$lat)),"N",sep=""), 
                      years=gsub(",","-",gsub("-[0-9]{2}","",meta$dates)), url=meta$url))
 ## load statistics
-data("statistics.cmip.era.tas.1981-2010")
-stats$tas$present <- store
-data("statistics.cmip.tas.2021-2050")
-stats$tas$nf <- store
-data("statistics.cmip.tas.2071-2100")
-stats$tas$ff <- store
+#data("statistics.cmip.era.tas.1981-2010")
+#stats$tas$present <- store
+#data("statistics.cmip.tas.2021-2050")
+#stats$tas$nf <- store
+#data("statistics.cmip.tas.2071-2100")
+#stats$tas$ff <- store
 
 ## load and expand commonEOFs
 data("ceof.gcm.tas.annual")
