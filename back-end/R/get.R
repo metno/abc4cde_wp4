@@ -59,7 +59,7 @@ python.getEra <- function(start,end,variable,steps,type,stream,outfile,verbose=F
 #See instructions in https://software.ecmwf.int/wiki/display/WEBAPI/Access+ECMWF+Public+Datasets
 #The function also requires that cdo is installed on the operating computer.
 getERA <- function(variable.name,start=1979,end=2016,griddes="cmip_1.25deg_to_2.5deg.txt",
-                   destfile=NULL,verbose=FALSE){
+                   destfile=NULL,force=FALSE,verbose=FALSE){
   if(verbose) print("getERA")
   griddes <- find.file(griddes)[1]
   if(any(match(c("tas","tmp","temp","temperature","t2m"),variable.name,nomatch=0))) {
@@ -79,15 +79,15 @@ getERA <- function(variable.name,start=1979,end=2016,griddes="cmip_1.25deg_to_2.
     commands <- c("-f","nc","-copy","-monsum","-remapcon","-chname")
     input <- c("","","","",griddes,"2t,tas")
   }
-  #griddes <- find.file(griddes)
   if(is.null(destfile)) destfile <- paste("era-interim_monthly_",paste(start,end,sep="-"),"_",variable.name,".grib",sep="")
-  if(!file.exists(destfile)) {
-    if(verbose) print("File does not exist. Download with ECMWF Python tool.")
-    python.getEra(start, end, varID, steps, type, stream, destfile, verbose=verbose)
-  }
   outfile <- paste(gsub('.{5}$', '',destfile),"2.5deg",'nc',sep=".")
-  if(!file.exists(outfile)) {
-    if(verbose) print("File with 2.5deg data does not exist. Regrid with CDO.")
+  if(!file.exists(outfile)|force) {
+    if(verbose) print("NetCDF file with 2.5deg data does not exist.")
+    if(!file.exists(destfile)) {
+      if(verbose) print("GRIB file does not exist. Download with ECMWF Python tool.")
+      python.getEra(start, end, varID, steps, type, stream, destfile, verbose=verbose)
+    }
+    if(verbose) print("Regrid with CDO and save as netCDF.")
     cdo.command(commands,input,infile=destfile,outfile=outfile)
   }
   if(verbose) print("Retrieve data from netCDF file.")
