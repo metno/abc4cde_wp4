@@ -5,6 +5,7 @@ library(shiny)
 library(DECM)
 library(DT)
 #if ('RgoogleMaps' %in% installed.packages()) install.packages('RgoogleMaps')
+source("~/git/abc4cde_wp4/back-end/R/plottingtools.R")
 
 ## Preparations
 ## source scripts

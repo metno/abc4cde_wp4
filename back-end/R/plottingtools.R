@@ -18,6 +18,8 @@ map.ensemble <- function(ceof,im=NULL,ip=NULL,is=NULL,type=NULL,new=TRUE,FUN="me
   mt <- maptype(type)
   if(grepl("cc",mt)) {
     if(is.null(colbar$pal)) colbar$pal <- "burd"
+    if(grepl("t2m|tas|temp",attr(ceof[[2]],"variable"))) colbar$breaks <- seq(-10,10,1)
+    if(grepl("pr",attr(ceof[[2]],"variable"))) colbar$breaks <- seq(-2,2,0.2)
     it1 <- c(1971,2000)
     if(grepl("ff",mt)) it2 <- c(2071,2100) 
     if(grepl("nf",mt)) it2 <- c(2021,2050)
@@ -26,8 +28,14 @@ map.ensemble <- function(ceof,im=NULL,ip=NULL,is=NULL,type=NULL,new=TRUE,FUN="me
                          paste(it1,collapse="-")," to ",paste(it2,collapse="-"),")",sep="")
   } else if(grepl("mv",mt)) {
     if(is.null(colbar$pal)) {
-      if(grepl("t2m|tas|temp",attr(ceof[[2]],"variable"))) colbar$pal <- "t2m"
-      if(grepl("pr",attr(ceof[[2]],"variable"))) colbar$pal <- "precip"
+      if(grepl("t2m|tas|temp",attr(ceof[[2]],"variable"))) {
+        colbar$pal <- "t2m"
+        colbar$breaks <- seq(-60,40,5)
+      }
+      if(grepl("pr",attr(ceof[[2]],"variable"))) {
+        colbar$pal <- "precip"
+        colbar$breaks <- seq(0,15,0.5)
+      }
     }
     if(grepl("ff",mt)) it1 <- c(2071,2100) 
     if(grepl("nf",mt)) it1 <- c(2021,2050)
