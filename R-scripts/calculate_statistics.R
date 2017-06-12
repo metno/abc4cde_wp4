@@ -5,8 +5,6 @@ setwd(system("find $HOME -name download_tests.R -exec dirname {} \\;",intern=TRU
 ## Requires rgdal, raster, esd (zoo, ncdf4), PCICt 
 library(DECM)
 
-## Add calculations of mean values for future periods:
-
 #Function to calculate basic statistics
 calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), variable="tas", 
                                       nfiles=5, continue=TRUE, verbose=FALSE, mask="coords.txt") {
