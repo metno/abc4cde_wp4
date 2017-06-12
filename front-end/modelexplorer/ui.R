@@ -29,7 +29,8 @@ navbarPage(title = 'Climate model data explorer (Beta version)',
                            choices = c("Temperature",
                                        "Precipitation"),
                            selected = "Temperature")),
-                    plotOutput("map")
+		                column(3,
+                    plotOutput("map"))
            ),
            tabPanel('Scatterplot of climate change', 
                     #textInput('x2', 'Row ID'), 
