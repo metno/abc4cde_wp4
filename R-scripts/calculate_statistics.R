@@ -15,7 +15,10 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
   if(max(period)>2015) reference <- NULL
   if(!is.null(reference)) {
     ref.file <- getReference(reference,variable)
-    if(!ref.file) {reference <- NULL; print("Warning! Reference file not found. Continuing without reference data.")}
+    if(!is.character(ref.file)) {
+      reference <- NULL
+      print("Warning! Reference file not found. Continuing without reference data.")
+    }
   }
   if(!is.null(reference)) {
     store.file <- paste("statistics.cmip", reference, variable, paste(period, collapse="-"), "rda", sep=".")
@@ -131,35 +134,18 @@ calculate.statistics.cordex <- function(reference="era", period=c(1981,2010), va
 opt <- list(verbose=TRUE,reference="era",it=c(1981,2010),variable="tas",
             nfiles=9,continue=FALSE,mask="coords.txt",help=FALSE)
 
-calculate.statistics.cmip(reference=opt$reference, period=opt$it, variable=opt$variable, 
-                          nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
-                          mask=opt$mask)
-
-for (it in list(c(2071,2100),c(2021,2050))) {
-  calculate.statistics.cmip(reference=NULL, period=it, variable=opt$variable, 
+for (varid in c("tas","pr")) {
+  calculate.statistics.cmip(reference=opt$reference, period=opt$it, variable=varid, 
                             nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
                             mask=opt$mask)
+  for (it in list(c(2071,2100),c(2021,2050))) {
+    calculate.statistics.cmip(reference=NULL, period=it, variable=varid, 
+                              nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
+                              mask=opt$mask)
+  }
 }
 
-opt$variable <- "precip"
-calculate.statistics.cmip(reference=opt$reference, period=opt$it, variable=opt$variable, 
-                          nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
-                          mask=opt$mask)
-for (it in list(c(2071,2100),c(2021,2050))) {
-  calculate.statistics.cmip(reference=NULL, period=it, variable=opt$variable, 
-                            nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
-                            mask=opt$mask)
-}
-
-calculate.statistics.cmip(reference=opt$reference, period=opt$it, variable="precip", 
-                          nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
-                          mask=opt$mask)
-
-calculate.statistics.cordex(reference=opt$reference, period=opt$it, variable=opt$variable, 
-                          nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
-                          mask=opt$mask)
-
-calculate.statistics.cordex(reference=opt$reference, period=opt$it, "precip", 
-                          nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
-                          mask=opt$mask)
+#calculate.statistics.cordex(reference=opt$reference, period=opt$it, variable=opt$variable, 
+#                          nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
+#                          mask=opt$mask)
 
