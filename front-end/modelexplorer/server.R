@@ -98,7 +98,7 @@ shinyServer(function(input, output) {
     ceof.tas <- select.ceof(input$table_rows_selected,"temp")
     ceof.pr <- select.ceof(input$table_rows_selected,"precip")
     EQC.scatterplot(ceof.tas=ceof.tas,ceof.pr=ceof.pr,im=attr(ceof.tas,"im"),new=FALSE)
-  })
+  }, width=600, height=600)
 
   output$rawdata <- DT::renderDataTable({
     #browser()
@@ -117,7 +117,7 @@ shinyServer(function(input, output) {
   output$map <- renderPlot({
     ceof <- selected.ceof()
     map.ensemble(ceof,type=input$type,new=FALSE)
-  })
+  },height=500, width=750)
   
   # output$plots <- renderPlot({
   #   
