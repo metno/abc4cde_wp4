@@ -189,6 +189,44 @@ EQC.scatterplot <- function(ceof.tas,ceof.pr=NULL,is=NULL,it1=c(1976,2005),it2=c
   return(X)
 }
 
+EQC.scatterplot.2 <- function(dtas,dpr,im=1,pal="grmg",lplot=TRUE,new=TRUE,verbose=FALSE) {
+  if(lplot) {
+    xlim <- c(-3,3)
+    ylim <- c(-0.2,0.2)
+    if(!is.null(pal)) {
+      col <- colscal(n=length(dtas),col=pal)
+    } else {
+      col <- rep("grey50",length(dtas))
+    }
+    bg <- col
+    col[im] <- "black"
+    pch <- 21
+    cex <- rep(1.5,length(dtas))
+    cex[im] <- 2
+    lwd <- rep(1.5,length(dtas))
+    #lwd[im] <- 2
+    label.gcm <- names(dtas)
+    ## Add rcp label  
+    if(new) dev.new()
+    plot(unlist(dtas),unlist(dpr),col=col,pch=pch,cex=cex,lwd=lwd,
+         bg=bg,xlim=xlim,ylim=ylim,
+         xlab="Temperature change (degC)",
+         ylab="Precipitation change (mm/day)",
+         main=paste("Global mean climate change\n",
+                    "(",paste(it1,collapse="-")," to ",paste(it2,collapse="-"),")",sep=""))
+    lines(xlim*1.5,rep(0,2),lwd=0.2)
+    lines(rep(0,2),ylim*1.5,lwd=0.2)
+    grid()
+    legend("bottomleft",ncol=2,pch=pch,cex=0.6,col=col,pt.bg=bg,
+           bg=adjustcolor("white",alpha=0.6),box.lwd=0.5,
+           legend=label.gcm)
+  }
+  
+  X <- list(dtas=dtas,dpr=dpr)
+  attr(X,"model_id") <- attr(ceof.tas,"model_id")
+  return(X)
+}
+
 compare.fields <- function(x,y=NULL,lplot=FALSE,type=c("correlation","rmsd"),
                            filename=NULL,verbose=FALSE,...) {
   if(verbose) print("compare.fields")

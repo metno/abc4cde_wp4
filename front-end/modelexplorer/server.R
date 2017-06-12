@@ -15,6 +15,14 @@ M <- data.frame(list(project_id=meta$project_id, experiment_id=meta$experiment_i
                      rip=meta$gcm_rip, rcm=meta$rcm, var=meta$var, unit=meta$unit, resolution=paste(meta$resolution,"deg"),
                      domain=paste(gsub(","," - ",meta$lon),"E"," / ",paste(gsub(","," - ",meta$lat)),"N",sep=""), 
                      years=gsub(",","-",gsub("-[0-9]{2}","",meta$dates)), url=meta$url))
+## load statistics
+data("statistics.cmip.era.tas.1981-2010")
+stats$tas$present <- store
+data("statistics.cmip.tas.2021-2050")
+stats$tas$nf <- store
+data("statistics.cmip.tas.2071-2100")
+stats$tas$ff <- store
+
 ## load and expand commonEOFs
 data("ceof.gcm.tas.annual")
 ceof.tas.gcms <- ceof
@@ -96,10 +104,13 @@ shinyServer(function(input, output) {
   })
   
   output$dtdpr <- renderPlot({
-    ceof.tas <- select.ceof(input$table_rows_selected,"temp")
-    ceof.pr <- select.ceof(input$table_rows_selected,"precip")
-    EQC.scatterplot(ceof.tas=ceof.tas,ceof.pr=ceof.pr,im=attr(ceof.tas,"im"),new=FALSE)
-  })
+    #ceof.tas <- select.ceof(input$table_rows_selected,"temp")
+    #ceof.pr <- select.ceof(input$table_rows_selected,"precip")
+    #EQC.scatterplot(ceof.tas=ceof.tas,ceof.pr=ceof.pr,im=attr(ceof.tas,"im"),new=FALSE)
+    dtas <- 
+    dpr <- 
+    EQC.scatterplot(dtas,dpr,new=FALSE)
+  },width=750,height=600)
 
   output$rawdata <- DT::renderDataTable({
     #browser()
@@ -118,7 +129,7 @@ shinyServer(function(input, output) {
   output$map <- renderPlot({
     ceof <- selected.ceof()
     map.ensemble(ceof,type=input$type,new=FALSE)
-  })
+  },width=750,height=600)
   
   # output$plots <- renderPlot({
   #   

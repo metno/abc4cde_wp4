@@ -14,6 +14,10 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
   srex.regions <- as.character(shape$LAB)
   if(max(period)>2015) reference <- NULL
   if(!is.null(reference)) {
+    ref.file <- getReference(reference,variable)
+    if(!ref.file) {reference <- NULL; print("Warning! Reference file not found. Continuing without reference data.")}
+  }
+  if(!is.null(reference)) {
     store.file <- paste("statistics.cmip", reference, variable, paste(period, collapse="-"), "rda", sep=".")
   } else {
     store.file <- paste("statistics.cmip", variable, paste(period, collapse="-"), "rda", sep=".")
@@ -23,7 +27,6 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
   
   if(!is.null(reference)) {
     reference.raster <- raster(ref.file)
-    ref.file <- getReference(reference,variable)
     store.name <- paste(reference,variable,sep=".")
     store[[store.name]]$spatial.sd <- c(cdo.spatSd(ref.file,period), cdo.spatSd(ref.file,period,seasonal=TRUE))
     store[[store.name]]$mean <- c(cdo.mean(ref.file,period), cdo.mean(ref.file,period,seasonal=TRUE))
@@ -132,6 +135,16 @@ calculate.statistics.cmip(reference=opt$reference, period=opt$it, variable=opt$v
                           nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
                           mask=opt$mask)
 
+for (it in list(c(2071,2100),c(2021,2050))) {
+  calculate.statistics.cmip(reference=NULL, period=it, variable=opt$variable, 
+                            nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
+                            mask=opt$mask)
+}
+
+opt$variable <- "precip"
+calculate.statistics.cmip(reference=opt$reference, period=opt$it, variable=opt$variable, 
+                          nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
+                          mask=opt$mask)
 for (it in list(c(2071,2100),c(2021,2050))) {
   calculate.statistics.cmip(reference=NULL, period=it, variable=opt$variable, 
                             nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
