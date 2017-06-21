@@ -26,12 +26,26 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
   store <- list()
   if(file.exists(store.file)) load(store.file)
   
+  units <- NULL
   if(!is.null(reference)) {
     reference.raster <- raster(ref.file)
     store.name <- paste(reference,variable,sep=".")
     store[[store.name]]$spatial.sd <- c(cdo.spatSd(ref.file,period), cdo.spatSd(ref.file,period,seasonal=TRUE))
     store[[store.name]]$mean <- c(cdo.mean(ref.file,period), cdo.mean(ref.file,period,seasonal=TRUE))
-  
+    if(variable=="pr") {
+      if(max(abs(store[[store.name]]$mean),na.rm=TRUE)<0.001) {
+        units <- "kg m-2 s-1"
+      } else {
+        units <- "mm/day"
+      }
+    } else if (variable=="tas") {
+      if(max(abs(store[[store.name]]$mean),na.rm=TRUE)>273) {
+        units <- "K"
+      } else {
+        units <- "degrees~Celsius"
+      }
+    }
+    
     for(i in 1:length(srex.regions)){
       getPolCoords(i,shape=shape,destfile=mask)
       store[[ store.name ]][[ srex.regions[i] ]]$spatial.sd <- c(cdo.spatSd(ref.file,period,mask=mask), cdo.spatSd(ref.file,period,mask=mask,seasonal=TRUE))
@@ -66,6 +80,21 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
     gc()
     if(i==ngcm) return(store)
   }
+  attribute(store,"variable") <- variable
+  if(variable=="pr") {
+    if(max(abs(store[[1]]$mean),na.rm=TRUE)<0.001) {
+      attribute(store,"unit") <- "kg m-2 s-1"
+    } else {
+      attribute(store,"unit") <- "mm/day"
+    }
+  } else if (variable=="tas") {
+    if(max(abs(store[[1]]$mean),na.rm=TRUE)>273) {
+      attribute(store,"unit") <- "K"
+    } else {
+      attribute(store,"unit") <- "degrees~Celsius"
+    }
+  }
+  save(file=store.file,store)  
   return(store)
 }
 
