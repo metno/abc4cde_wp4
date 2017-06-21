@@ -15,24 +15,43 @@ M <- data.frame(list(project_id=meta$project_id, experiment_id=meta$experiment_i
                      domain=paste(gsub(","," - ",meta$lon),"E"," / ",paste(gsub(","," - ",meta$lat)),"N",sep=""), 
                      years=gsub(",","-",gsub("-[0-9]{2}","",meta$dates)), url=meta$url))
 ## load statistics
-#data("statistics.cmip.era.tas.1981-2010")
-#stats$tas$present <- store
-#data("statistics.cmip.tas.2021-2050")
-#stats$tas$nf <- store
-#data("statistics.cmip.tas.2071-2100")
-#stats$tas$ff <- store
+stats <- NULL
+data("statistics.cmip.era.tas.1981-2010")
+stats$tas$present <- store
+data("statistics.cmip.tas.2021-2050")
+stats$tas$nf <- store
+data("statistics.cmip.tas.2071-2100")
+stats$tas$ff <- store
+data("statistics.cmip.era.pr.1981-2010")
+stats$pr$present <- store
+data("statistics.cmip.pr.2021-2050")
+stats$pr$nf <- store
+data("statistics.cmip.pr.2071-2100")
+stats$pr$ff <- store
 
 ## load and expand commonEOFs
+ceof.all <- NULL
 data("ceof.gcm.tas.annual")
-ceof.tas.gcms <- ceof
+ceof.all$tas$CMIP5 <- ceof
 data("ceof.gcm.pr.annual")
-ceof.pr.gcms <- ceof
+ceof.all$pr$CMIP5 <- ceof
 data("ceof.rcm.tas.annual")
-ceof.tas.rcms <- ceof
+ceof.all$tas$CORDEX <- ceof
 data("ceof.rcm.pr.annual")
-ceof.pr.rcms <- ceof
-
+ceof.all$pr$CORDEX <- ceof
+ceof <- ceof.all
+rm("ceof.all"); gc(reset=TRUE)
 selectrowindex <- 1
+
+dT <- list()
+dPr <- list()
+gcms <- names(stats$tas$ff)
+for (gcm in gcms) {
+  dT[["nf"]][[gcm]] <- stats$tas$nf[[gcm]]$mean - stats$tas$present[[gcm]]$mean
+  dT[["ff"]][[gcm]] <- stats$tas$ff[[gcm]]$mean - stats$tas$present[[gcm]]$mean
+  dPr[["nf"]][[gcm]] <- stats$pr$nf[[gcm]]$mean - stats$pr$present[[gcm]]$mean
+  dPr[["ff"]][[gcm]] <- stats$pr$ff[[gcm]]$mean - stats$pr$present[[gcm]]$mean
+}
 
 select.ceof <- function(table_rows_selected=1,varid="Temperature") {
   if (length(table_rows_selected)>0) {
@@ -42,27 +61,18 @@ select.ceof <- function(table_rows_selected=1,varid="Temperature") {
     selectedrowindex <- 1
   }
   selectedrow <- (M[selectedrowindex,])
-  ceof <- NULL
-  if(selectedrow$project_id=="CMIP5") {
-    if (grepl("temp",tolower(varid))) {
-      ceof <- ceof.tas.gcms 
-    } else { 
-      ceof <- ceof.pr.gcms
-    }
-    im <- which(attr(ceof,"model_id")$gcm==selectedrow$gcm & 
-                  attr(ceof,"model_id")$gcm_rip==selectedrow$rip)
-  } else if(selectedrow$project_id=="CORDEX") {
-    if (grepl("temp",tolower(varid))) {
-      ceof <- ceof.tas.rcms
-    } else if(grepl("pr",tolower(varid))) {
-      ceof <- ceof.pr.rcms
-    }
-    im <- which(attr(ceof,"model_id")$rcm==selectedrow$rcm & 
-                  attr(ceof,"model_id")$gcm==selectedrow$gcm & 
-                  attr(ceof,"model_id")$gcm_rip==selectedrow$rip)
+  ceof.sel <- NULL
+  if (grepl("temp",tolower(varid))) {
+    ceof.sel <- ceof$tas
+  } else {
+    ceof.sel <- ceof$pr
   }
-  attr(ceof,"im") <- im
-  return(ceof)
+  ceof.sel <- ceof.sel[[selectedrow$project_id]]
+  im <- which(attr(ceof,"model_id")$rcm==selectedrow$rcm & 
+              attr(ceof,"model_id")$gcm==selectedrow$gcm & 
+              attr(ceof,"model_id")$gcm_rip==selectedrow$rip)
+  attr(ceof.sel,"im") <- im
+  return(ceof.sel)
 }
 
 # Define a server for the Shiny app
@@ -103,9 +113,21 @@ shinyServer(function(input, output) {
   })
   
   output$dtdpr <- renderPlot({
-    ceof.tas <- select.ceof(input$table_rows_selected,"temp")
-    ceof.pr <- select.ceof(input$table_rows_selected,"precip")
-    EQC.scatterplot(ceof.tas=ceof.tas,ceof.pr=ceof.pr,im=attr(ceof.tas,"im"),new=FALSE)
+    #ceof.tas <- select.ceof(input$table_rows_selected,"temp")
+    #ceof.pr <- select.ceof(input$table_rows_selected,"precip")
+    season <- switch(tolower(as.character(input$season)),
+                     'annual mean'='ann','winter'='djf','spring'='mam',
+                     'summer'='jja','autumn'='son')
+    period <- switch(tolower(as.character(input$period)),
+                     "far future (2071-2100)"='ff',
+                     "near future (2021-2050)"='nf')
+    dtas <- unlist(lapply(dT[[period]], function(x) x[[season]]))
+    dpr <- unlist(lapply(dPr[[period]], function(x) x[[season]]))
+    scatterplot(dtas,dpr,ix=NULL,xlim=c(-3,3),ylim=c(-0.2,0.2)/(60*60*24),
+                xlab="Temperature (deg C)",ylab="Precipitation (kg m-1 s-2)",
+                main=paste("Climate change assuming RCP4.5\npresent day to",input$period),
+                legend=seq(length(dtas)),pal="cat",pch=21,cex=1.5,lwd=1.5,new=TRUE)
+    EQC.scatterplot.2(dtas=dtas,dpr=dpr,new=FALSE,label.title=input$period)
   }, width=600, height=600)
 
   output$rawdata <- DT::renderDataTable({
@@ -401,3 +423,29 @@ shinyServer(function(input, output) {
 #   })
 #   
 # })
+
+# names.gcms <- function(data="stats",project_id="CMIP5",var="tas") {
+#   if(data=="stats") {
+#     if(is.null(var)) var <- "tas"
+#     nm <- names(stats[[var]]$ff)
+#   } else if(data=="meta") {
+#     nm <- apply(M,1,function(x) {
+#       y <- paste(x["gcm"],x["rip"],sep=".")
+#       if(!is.na(x["rcm"])) y <- paste(x["rcm"],y,sep=" / ")
+#       return(y) } )
+#     im <- rep(TRUE,length(nm))
+#     if(!is.null(var)) im <- M$var==var
+#     if(!is.null(project_id)) im <- M$project_id==project_id
+#     im <- seq(length(nm))[im]
+#     nm <- nm[im]
+#     names(nm) <- im
+#   } else if(data=="ceof") {
+#     if(var %in% c("temp","tas")) {
+#       nm <- ceof["tas"][project_id]
+#     } else {
+#       nm <- ceof["pr"][project_id]
+#     }
+#   }
+#   return(nm)
+# }
+

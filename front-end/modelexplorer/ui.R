@@ -4,6 +4,9 @@ if (!require("DT")) install.packages('DT')
 library(DT)
 library(DECM)
 
+data("statistics.cmip.era.tas.1981-2010")
+gcmnames <- paste(seq(length(store)),names(store),sep=". ")
+
 navbarPage(title = 'Climate model data explorer (Beta version)', 
            id = 'x0',
            header=img(src="banner_c3s.png", 
@@ -33,8 +36,16 @@ navbarPage(title = 'Climate model data explorer (Beta version)',
                     plotOutput("map"))
            )#,
            #tabPanel('Scatterplot of climate change', 
-           #         #textInput('x2', 'Row ID'), 
-           #         plotOutput("dtdpr")
+           #         #textInput('x2', 'Row ID'),
+           #         column(6,
+           #           column(3,selectInput("season",
+           #                      label = "Season",
+           #                      choices = c("Annual mean","Winter","Spring","Summer","Autumn"),
+           #                      selected = "Annual mean"),
+           #                    checkboxGroupInput("gcms",
+           #                      label = "Climate models",
+           #                      choices = gcmnames)),
+           #         plotOutput("dtdpr"))
            #)#,
            #tabPanel('View data', 
            #         #textInput('x2', 'Row ID'), 
