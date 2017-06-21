@@ -17,9 +17,14 @@ map.ensemble <- function(ceof,im=NULL,ip=NULL,is=NULL,type=NULL,new=TRUE,FUN="me
   if(verbose) print("map.ensemble")
   mt <- maptype(type)
   if(grepl("cc",mt)) {
-    if(is.null(colbar$pal)) colbar$pal <- "burd"
-    if(grepl("t2m|tas|temp",attr(ceof[[2]],"variable"))) colbar$breaks <- seq(-10,10,1)
-    if(grepl("pr",attr(ceof[[2]],"variable"))) colbar$breaks <- seq(-2,2,0.2)
+    if(grepl("t2m|tas|temp",attr(ceof[[2]],"variable"))) {
+      colbar$breaks <- seq(-10,10,1)
+      if(is.null(colbar$pal)) colbar$pal <- "burd"
+    }
+    if(grepl("pr",attr(ceof[[2]],"variable"))) {
+      colbar$breaks <- seq(-2,2,0.2)
+      if(is.null(colbar$pal)) {colbar$pal <- "burd"; colbar$rev <- TRUE} 
+    }
     it1 <- c(1971,2000)
     if(grepl("ff",mt)) it2 <- c(2071,2100) 
     if(grepl("nf",mt)) it2 <- c(2021,2050)
@@ -29,11 +34,11 @@ map.ensemble <- function(ceof,im=NULL,ip=NULL,is=NULL,type=NULL,new=TRUE,FUN="me
   } else if(grepl("mv",mt)) {
     if(is.null(colbar$pal)) {
       if(grepl("t2m|tas|temp",attr(ceof[[2]],"variable"))) {
-        colbar$pal <- "t2m"
+        if(is.null(colbar$pal)) colbar$pal <- "t2m"
         colbar$breaks <- seq(-60,40,5)
       }
       if(grepl("pr",attr(ceof[[2]],"variable"))) {
-        colbar$pal <- "precip"
+        if(is.null(colbar$pal)) colbar$pal <- "precip"
         colbar$breaks <- seq(0,15,0.5)
       }
     }
@@ -63,6 +68,37 @@ map.ensemble <- function(ceof,im=NULL,ip=NULL,is=NULL,type=NULL,new=TRUE,FUN="me
   map(Y,new=new,colbar=colbar,main=label.title)
   invisible(Y)
 } 
+
+scatterplot <- function(x,y,ix=NULL,xlim=NULL,ylim=NULL,xlab=NULL,ylab=NULL,
+                        main=NULL,legend=NULL,pal="cat",pch=21,cex=1.5,lwd=1.5,
+                        new=FALSE,verbose=FALSE) {
+  if(verbose) print("scatterplot")
+  if(is.null(xlab)) xlab <- paste(attr(x,"variable")," (",attr(x,"unit"),")",sep="")
+  if(is.null(ylab)) ylab <- paste(attr(y,"variable")," (",attr(y,"unit"),")",sep="")
+  if(is.null(main)) main <- ""
+  if(is.null(legend)) legend <- names(x)
+  if(is.null(xlim)) xlim <- range(x,na.rm=TRUE) + c(-1,1)*diff(range(x,na.rm=TRUE))*0.1 
+  if(is.null(ylim)) ylim <- range(y,na.rm=TRUE) + c(-1,1)*diff(range(y,na.rm=TRUE))*0.1
+  if(!is.null(pal)) {
+    col <- colscal(n=length(dtas),col=pal)
+  } else {
+    col <- rep("grey50",length(dtas))
+  }
+  bg <- col
+  if(!is.null(ix)) col[im] <- "black"
+  if(!is.null(ix)) {
+    if(length(cex)==1) cex <- rep(cex,length(x))
+    cex[ix] <- cex[1]*1.5
+  }
+  if(new) dev.new()
+  plot(unlist(x),unlist(y),col=col,pch=pch,cex=cex,lwd=lwd,
+       bg=bg,xlim=xlim,ylim=ylim,xlab=xlab,ylab=ylab,main=main)
+  lines(xlim*1.5,rep(0,2),lwd=0.2)
+  lines(rep(0,2),ylim*1.5,lwd=0.2)
+  grid()
+  legend("bottomleft",ncol=floor(length(x)/3),pch=pch,cex=1,col=col,pt.bg=bg,
+         bg=adjustcolor("white",alpha=0.6),box.lwd=0.5,legend=legend)
+}
 
 select.colbar <- function(x,breaks=NULL,pal=NULL) {
   if(is.null(breaks)) {
