@@ -1,22 +1,9 @@
 
-maptype <- function(type="Climate change far future") {
-  if(!is.null(type)) {
-    switch(type,"Climate change near future"="ccnf",
-           "Climate change far future"="ccff",
-           "Mean value present day"="mvpd",
-           "Mean value near future"="mvnf",
-           "Mean value far future"="mvff")
-  } else {
-    "ccff"
-  }
-}
-
 map.ensemble <- function(ceof,im=NULL,ip=NULL,is=NULL,type=NULL,new=TRUE,FUN="mean",
                          colbar=list(pal=NULL,breaks=NULL,show=TRUE,rev=FALSE),
                          verbose=FALSE) {
   if(verbose) print("map.ensemble")
-  mt <- maptype(type)
-  if(grepl("cc",mt)) {
+  if(grepl("cc",type)) {
     if(grepl("t2m|tas|temp",attr(ceof[[2]],"variable"))) {
       colbar$breaks <- seq(-10,10,1)
       if(is.null(colbar$pal)) colbar$pal <- "burd"
@@ -26,12 +13,12 @@ map.ensemble <- function(ceof,im=NULL,ip=NULL,is=NULL,type=NULL,new=TRUE,FUN="me
       if(is.null(colbar$pal)) {colbar$pal <- "burd"; colbar$rev <- TRUE} 
     }
     it1 <- c(1971,2000)
-    if(grepl("ff",mt)) it2 <- c(2071,2100) 
-    if(grepl("nf",mt)) it2 <- c(2021,2050)
+    if(grepl("ff",type)) it2 <- c(2071,2100) 
+    if(grepl("nf",type)) it2 <- c(2021,2050)
     label.title <- paste(attr(ceof[[2]],"longname")," change\n",
                          "ensemble ",FUN," (",
                          paste(it1,collapse="-")," to ",paste(it2,collapse="-"),")",sep="")
-  } else if(grepl("mv",mt)) {
+  } else if(grepl("mv",type)) {
     if(is.null(colbar$pal)) {
       if(grepl("t2m|tas|temp",attr(ceof[[2]],"variable"))) {
         if(is.null(colbar$pal)) colbar$pal <- "t2m"
@@ -42,9 +29,9 @@ map.ensemble <- function(ceof,im=NULL,ip=NULL,is=NULL,type=NULL,new=TRUE,FUN="me
         colbar$breaks <- seq(0,15,0.5)
       }
     }
-    if(grepl("ff",mt)) it1 <- c(2071,2100) 
-    if(grepl("nf",mt)) it1 <- c(2021,2050)
-    if(grepl("pd",mt)) it1 <- c(1971,2000)
+    if(grepl("ff",type)) it1 <- c(2071,2100) 
+    if(grepl("nf",type)) it1 <- c(2021,2050)
+    if(grepl("pd",type)) it1 <- c(1971,2000)
     it2 <- NULL
     label.title <- paste("Ensemble mean of ",attr(ceof[[2]],"longname")," (",paste(it1,collapse="-"),")",sep="")
   }
@@ -59,7 +46,7 @@ map.ensemble <- function(ceof,im=NULL,ip=NULL,is=NULL,type=NULL,new=TRUE,FUN="me
   Y <- as.field(Y,1,attr(Y1,"longitude"),attr(Y1,"latitude"),
                 param=attr(Y1,"variable"),unit=attr(Y1,"unit"))
   if(is.null(colbar$breaks))  {
-    if(grepl("cc",mt)) {
+    if(grepl("cc",typ)) {
       colbar$breaks <- pretty(c(-max(abs(Y),na.rm=TRUE),max(abs(Y),na.rm=TRUE)),n=10)
     } else {
       colbar$breaks <- pretty(range(Y,na.rm=TRUE),n=10)
@@ -70,13 +57,13 @@ map.ensemble <- function(ceof,im=NULL,ip=NULL,is=NULL,type=NULL,new=TRUE,FUN="me
 } 
 
 scatterplot <- function(x,y,ix=NULL,xlim=NULL,ylim=NULL,xlab=NULL,ylab=NULL,
-                        main=NULL,legend=NULL,pal="cat",pch=21,cex=1.5,lwd=1.5,
+                        main=NULL,legend=NULL,show.legend=TRUE,pal="cat",pch=21,cex=1.5,lwd=1.5,
                         new=FALSE,verbose=FALSE) {
   if(verbose) print("scatterplot")
   if(is.null(xlab)) xlab <- paste(attr(x,"variable")," (",attr(x,"unit"),")",sep="")
   if(is.null(ylab)) ylab <- paste(attr(y,"variable")," (",attr(y,"unit"),")",sep="")
   if(is.null(main)) main <- ""
-  if(is.null(legend)) legend <- names(x)
+  if(is.null(legend) & show.legend) legend <- names(x)
   if(is.null(xlim)) xlim <- range(x,na.rm=TRUE) + c(-1,1)*diff(range(x,na.rm=TRUE))*0.1 
   if(is.null(ylim)) ylim <- range(y,na.rm=TRUE) + c(-1,1)*diff(range(y,na.rm=TRUE))*0.1
   if(!is.null(pal)) {
@@ -96,7 +83,7 @@ scatterplot <- function(x,y,ix=NULL,xlim=NULL,ylim=NULL,xlab=NULL,ylab=NULL,
   lines(xlim*1.5,rep(0,2),lwd=0.2)
   lines(rep(0,2),ylim*1.5,lwd=0.2)
   grid()
-  legend("bottomleft",ncol=floor(length(x)/3),pch=pch,cex=1,col=col,pt.bg=bg,
+  if(show.legend) legend("bottomleft",ncol=floor(length(x)/3),pch=pch,cex=1,col=col,pt.bg=bg,
          bg=adjustcolor("white",alpha=0.6),box.lwd=0.5,legend=legend)
 }
 
