@@ -4,6 +4,7 @@
 library(shiny)
 library(DECM)
 library(DT)
+source("helpers.R")
 #if ('RgoogleMaps' %in% installed.packages()) install.packages('RgoogleMaps')
 
 ## Preparations
@@ -126,10 +127,17 @@ shinyServer(function(input, output) {
     scatterplot(dtas,dpr,ix=NULL,xlim=c(-3,3),ylim=c(-0.2,0.2)/(60*60*24),
                 xlab="Temperature (deg C)",ylab="Precipitation (kg m-1 s-2)",
                 main=paste("Climate change assuming RCP4.5\npresent day to",input$period),
-                legend=seq(length(dtas)),pal="cat",pch=21,cex=1.5,lwd=1.5,new=TRUE)
-    EQC.scatterplot.2(dtas=dtas,dpr=dpr,new=FALSE,label.title=input$period)
+                show.legend=FALSE,
+                legend=seq(length(dtas)),pal=NULL,#pal="cat",pch=21,
+                pch=as.character(seq(length(dtas))),cex=1.5,lwd=1.5,new=FALSE)
   }, width=600, height=600)
 
+  output$map <- renderPlot({
+    ceof <- selected.ceof()
+    fn <- 
+    map.ensemble(ceof,type=type.switch(input$type),new=FALSE,FUN=fn.switch(input$fn))
+  },height=500, width=750)
+  
   output$rawdata <- DT::renderDataTable({
     #browser()
     # if (length(input$table_rows_selected)>0) {
@@ -144,10 +152,6 @@ shinyServer(function(input, output) {
     # DT::datatable(data.frame(Date=index(sel.sta),Value=coredata(sel.sta)),filter='top',options = list(paging = TRUE))
   })
   
-  output$map <- renderPlot({
-    ceof <- selected.ceof()
-    map.ensemble(ceof,type=input$type,new=FALSE)
-  },height=500, width=750)
   
   # output$plots <- renderPlot({
   #   
