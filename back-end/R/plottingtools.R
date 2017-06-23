@@ -56,7 +56,7 @@ map.ensemble <- function(ceof,im=NULL,ip=NULL,is=NULL,type=NULL,new=TRUE,FUN="me
   invisible(Y)
 } 
 
-scatterplot <- function(x,y,ix=NULL,xlim=NULL,ylim=NULL,xlab=NULL,ylab=NULL,
+scatterplot <- function(x,y,ix=NULL,xlim=NULL,ylim=NULL,xlab=NULL,ylab=NULL,im=NULL,
                         main=NULL,legend=NULL,show.legend=TRUE,pal="cat",pch=21,cex=1.5,lwd=1.5,
                         new=FALSE,verbose=FALSE) {
   if(verbose) print("scatterplot")
@@ -66,10 +66,15 @@ scatterplot <- function(x,y,ix=NULL,xlim=NULL,ylim=NULL,xlab=NULL,ylab=NULL,
   if(is.null(legend) & show.legend) legend <- names(x)
   if(is.null(xlim)) xlim <- range(x,na.rm=TRUE) + c(-1,1)*diff(range(x,na.rm=TRUE))*0.1 
   if(is.null(ylim)) ylim <- range(y,na.rm=TRUE) + c(-1,1)*diff(range(y,na.rm=TRUE))*0.1
+  #if(is.null(im)) im <- seq(x)
   if(!is.null(pal)) {
-    col <- colscal(n=length(dtas),col=pal)
+    col <- colscal(n=length(x),col=pal)
   } else {
-    col <- rep("grey50",length(dtas))
+    col <- rep("blue",length(x))
+  }
+  if(!is.null(im)) {
+    nim <- !(seq(length(col)) %in% im)
+    if(any(nim)) col[nim] <- adjustcolor(col[nim], alpha.f=0.2)
   }
   bg <- col
   if(!is.null(ix)) col[im] <- "black"
@@ -78,7 +83,7 @@ scatterplot <- function(x,y,ix=NULL,xlim=NULL,ylim=NULL,xlab=NULL,ylab=NULL,
     cex[ix] <- cex[1]*1.5
   }
   if(new) dev.new()
-  plot(unlist(x),unlist(y),col=col,pch=pch,cex=cex,lwd=lwd,
+  plot(unlist(x),unlist(y),col=col,pch=pch,cex=cex,lwd=lwd,new=FALSE,
        bg=bg,xlim=xlim,ylim=ylim,xlab=xlab,ylab=ylab,main=main)
   lines(xlim*1.5,rep(0,2),lwd=0.2)
   lines(rep(0,2),ylim*1.5,lwd=0.2)
