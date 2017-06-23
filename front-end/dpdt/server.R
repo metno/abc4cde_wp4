@@ -2,6 +2,7 @@
 library(shiny)
 library(DECM)
 library(DT)
+source("helpers.R")
 
 ## load statistics
 stats <- NULL
@@ -40,10 +41,11 @@ shinyServer(function(input, output) {
                      "near future (2021-2050)"='nf')
     dtas <- unlist(lapply(dT[[period]], function(x) x[[season]]))
     dpr <- unlist(lapply(dPr[[period]], function(x) x[[season]]))
-    scatterplot(dtas,dpr,ix=NULL,xlim=c(-3,3),ylim=c(-0.2,0.2)/(60*60*24),
-                xlab="Temperature (deg C)",ylab="Precipitation (kg m-1 s-2)",
+    im <- as.numeric(gsub(":.*","",input$gcms))
+    scatterplot(dtas,dpr*(60*60*24),ix=NULL,xlim=c(-3,3),ylim=c(-0.2,0.2),
+                xlab="Temperature (deg C)",ylab="Precipitation (mm/day)",
                 main=paste("Climate change assuming RCP4.5\npresent day to",input$period),
-                show.legend=FALSE,
+                show.legend=FALSE,im=im,
                 legend=seq(length(dtas)),pal=NULL,#pal="cat",pch=21,
                 pch=as.character(seq(length(dtas))),cex=1.5,lwd=1.5,new=FALSE)
   }, width=600, height=600)
