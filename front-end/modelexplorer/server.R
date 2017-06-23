@@ -92,7 +92,7 @@ shinyServer(function(input, output) {
   output$map <- renderPlot({
     ceof <- selected.ceof()
     map.ensemble(ceof,type=type.switch(input$type),new=FALSE,FUN=fn.switch(input$fn))
-  },height=500, width=750)
+  },height=450, width=650)
   
   output$rawdata <- DT::renderDataTable({
     #browser()
