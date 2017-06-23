@@ -3,7 +3,6 @@ library(shiny)
 if (!require("DT")) install.packages('DT')
 library(DT)
 library(DECM)
-source("/home/kajsamp/git/abc4cde_wp4/back-end/R/plottingtools.R")
 
 #data("statistics.cmip.tas.2071-2100")
 data("metaextract")
