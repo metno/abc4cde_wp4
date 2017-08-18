@@ -1,8 +1,8 @@
 # Calculate the mean value over time with CDO. Faster than in R.
-# Is this function affected by the error that Abdelkader discovered with -timmean?
+# Is this function affected by the error that Abdelkader discovered with -timmean? No.
 
 cdo.mean <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE,
-                     is.temp=TRUE,verbose=FALSE) {
+                     monthly=FALSE,is.temp=TRUE,verbose=FALSE) {
   
   commands <- c("-fldmean","-timmean","-selyear")
   input <- c("","",paste(period,collapse="/"))
@@ -11,7 +11,9 @@ cdo.mean <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE,
     commands <- append(commands,"-maskregion",after=2)
     input <- append(input,mask,after=2) 
   }
-  if(seasonal){
+  if(monthly) {
+    commands <- replace(commands,commands=="-timmean","-ymonmean")
+  } else if(seasonal){
     commands <- replace(commands,commands=="-timmean","-yseasmean")
   }
   
@@ -22,7 +24,9 @@ cdo.mean <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE,
   input <- c("")
   
   out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=TRUE))
-  if(seasonal) {
+  if(monthly) {
+    names(out) <- c("jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec")
+  } else if(seasonal) {
     names(out) <- c("djf","mam","jja","son")
   } else {
     names(out) <- "ann"
@@ -34,8 +38,9 @@ cdo.mean <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE,
 }
 
 ## Calculate the temporal standard deviation with cdo
-cdo.timeSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) {
-  
+cdo.timeSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE,
+                       monthly=FALSE,verbose=FALSE) {
+  if(verbose) print("cdo.timeSd")
   commands <- c("-timstd","-fldmean","-ymean","-selyear")
   input <- c("","",paste(period,collapse="/"))
   
@@ -43,7 +48,9 @@ cdo.timeSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) 
     commands <- append(commands,"-maskregion",after=3)
     input <- append(input,mask,after=3) 
   }
-  if(seasonal){
+  if(monthly) {
+    commands <- replace(commands,commands=="-ymean","-monmean")
+  } else if(seasonal) {
     commands <- replace(commands,commands=="-ymean","-seasmean")
   }
   
@@ -54,7 +61,9 @@ cdo.timeSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) 
   input <- c("")
   
   out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=TRUE))
-  if(seasonal) {
+  if(monthly) {
+    names(out) <- c("jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec")
+  } else if(seasonal) {
     names(out) <- c("djf","mam","jja","son")
   } else {
     names(out) <- "ann"
@@ -64,8 +73,9 @@ cdo.timeSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) 
 }
 
 # Calculate the spatial standard deviation with cdo
-cdo.spatSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) {
-  
+cdo.spatSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE,
+                       monthly=FALSE,verbose=FALSE) {
+  if(verbose) print("cdo.spatSd")
   commands <- c("-fldstd","-timmean","-selyear")
   input <- c("","",paste(period,collapse="/"))
   
@@ -73,7 +83,9 @@ cdo.spatSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) 
     commands <- append(commands,"-maskregion",after=2)
     input <- append(input,mask,after=2) 
   }
-  if(seasonal){
+  if(seasonal) {
+    commands <- replace(commands,commands=="-timmean","-ymonmean")
+  } else if(seasonal){
     commands <- replace(commands,commands=="-timmean","-yseasmean")
   }
   
@@ -83,9 +95,11 @@ cdo.spatSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) 
   command <- ("output")
   input <- c("")
   out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=TRUE))
-  if(seasonal){
+  if(monthly) {
+    names(out) <- c("jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec")
+  } else if(seasonal) {
     names(out) <- c("djf","mam","jja","son")
-  }else{
+  } else {
     names(out) <- "ann"
   }
   system("rm tmp.nc")
@@ -93,8 +107,9 @@ cdo.spatSd <- function(model.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) 
 }
 
 # Calculate the spatial correlation of two gridded data sets with cdo
-cdo.gridcor <- function(model.file,reference.file,period=c(1981,2010),mask=NULL,seasonal=FALSE) {
-  
+cdo.gridcor <- function(model.file,reference.file,period=c(1981,2010),mask=NULL,
+                        seasonal=FALSE,monthly=FALSE,verbose=FALSE) {
+  if(verbose) print("cdo.gridcor")
   commands <- c("-timavg","-selyear")
   input <- c("",paste(period,collapse="/"))
   
@@ -102,7 +117,9 @@ cdo.gridcor <- function(model.file,reference.file,period=c(1981,2010),mask=NULL,
     commands <- append(commands,"-maskregion",after=2)
     input <- append(input,mask,after=2) 
   }
-  if(seasonal){
+  if(monthly) {
+    commands <- replace(commands,commands=="-timavg","-ymonavg")
+  } else if(seasonal) {
     commands <- replace(commands,commands=="-timavg","-yseasavg")
   }
   
@@ -121,7 +138,9 @@ cdo.gridcor <- function(model.file,reference.file,period=c(1981,2010),mask=NULL,
   command <- ("output")
   input <- c("")
   out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=TRUE))
-  if(seasonal){
+  if(monthly) {
+    names(out) <- c("jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec")
+  } else if(seasonal){
     names(out) <- c("djf","mam","jja","son")
   }else{
     names(out) <- "ann"
@@ -129,7 +148,6 @@ cdo.gridcor <- function(model.file,reference.file,period=c(1981,2010),mask=NULL,
   system("rm tmp.nc tmp2.nc tmp_cor.nc")
   invisible(out)
 }
-
 
 #Apply a set of cdo commands on a grib/netcdf file. Several commands can be piped.
 cdo.command <- function(commands,input,infile,outfile,intern=FALSE) {
