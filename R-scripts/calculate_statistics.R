@@ -30,8 +30,8 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
   if(!is.null(reference)) {
     reference.raster <- raster(ref.file)
     store.name <- paste(reference,variable,sep=".")
-    store[[store.name]]$spatial.sd <- c(cdo.spatSd(ref.file,period), cdo.spatSd(ref.file,period,seasonal=TRUE))
-    store[[store.name]]$mean <- c(cdo.mean(ref.file,period), cdo.mean(ref.file,period,seasonal=TRUE))
+    store[[store.name]]$spatial.sd <- c(cdo.spatSd(ref.file,period), cdo.spatSd(ref.file,period,monthly=TRUE))
+    store[[store.name]]$mean <- c(cdo.mean(ref.file,period), cdo.mean(ref.file,period,monthly=TRUE))
     if(variable=="pr") {
       if(max(abs(store[[store.name]]$mean),na.rm=TRUE)<0.001) {
         units <- "kg m-2 s-1"
@@ -48,8 +48,8 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
     
     for(i in 1:length(srex.regions)){
       getPolCoords(i,shape=shape,destfile=mask)
-      store[[ store.name ]][[ srex.regions[i] ]]$spatial.sd <- c(cdo.spatSd(ref.file,period,mask=mask), cdo.spatSd(ref.file,period,mask=mask,seasonal=TRUE))
-      store[[ store.name ]][[ srex.regions[i] ]]$mean <- c(cdo.mean(ref.file,period,mask=mask), cdo.mean(ref.file,period,mask=mask,seasonal=TRUE))
+      store[[ store.name ]][[ srex.regions[i] ]]$spatial.sd <- c(cdo.spatSd(ref.file,period,mask=mask), cdo.spatSd(ref.file,period,mask=mask,monthly=TRUE))
+      store[[ store.name ]][[ srex.regions[i] ]]$mean <- c(cdo.mean(ref.file,period,mask=mask), cdo.mean(ref.file,period,mask=mask,monthly=TRUE))
     }
   }
   
@@ -67,14 +67,14 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
     X <- getGCMs(select=i,varid=variable)
     gcm.file <- X[[1]]$filename
     store.name <- paste("gcm",i,sep=".")
-    store[[store.name]]$spatial.sd <- c(cdo.spatSd(gcm.file,period),cdo.spatSd(gcm.file,period,seasonal=T))
-    store[[store.name]]$mean <- c(cdo.mean(gcm.file,period),cdo.mean(gcm.file,period,seasonal=T))
-    if(!is.null(reference)) store[[store.name]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period),cdo.gridcor(gcm.file,ref.file,period,seasonal=T))
+    store[[store.name]]$spatial.sd <- c(cdo.spatSd(gcm.file,period),cdo.spatSd(gcm.file,period,monthly=T))
+    store[[store.name]]$mean <- c(cdo.mean(gcm.file,period),cdo.mean(gcm.file,period,monthly=T))
+    if(!is.null(reference)) store[[store.name]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period),cdo.gridcor(gcm.file,ref.file,period,monthly=T))
     for(j in 1:length(srex.regions)){
       getPolCoords(j,shape=shape,destfile=mask)
-      store[[store.name]][[srex.regions[j]]]$spatial.sd <- c(cdo.spatSd(gcm.file,period,mask=mask), cdo.spatSd(gcm.file,period,mask=mask,seasonal=T))
-      store[[store.name]][[srex.regions[j]]]$mean <- c(cdo.mean(gcm.file,period,mask=mask), cdo.mean(gcm.file,period,mask=mask,seasonal=T))
-      if(!is.null(reference)) store[[store.name]][[srex.regions[j]]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period,mask=mask), cdo.gridcor(gcm.file,ref.file,period,mask=mask,seasonal=T))
+      store[[store.name]][[srex.regions[j]]]$spatial.sd <- c(cdo.spatSd(gcm.file,period,mask=mask), cdo.spatSd(gcm.file,period,mask=mask,monthly=T))
+      store[[store.name]][[srex.regions[j]]]$mean <- c(cdo.mean(gcm.file,period,mask=mask), cdo.mean(gcm.file,period,mask=mask,monthly=T))
+      if(!is.null(reference)) store[[store.name]][[srex.regions[j]]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period,mask=mask), cdo.gridcor(gcm.file,ref.file,period,mask=mask,monthly=T))
     }
     save(file=store.file,store)
     gc()
@@ -118,13 +118,13 @@ calculate.statistics.cordex <- function(reference="era", period=c(1981,2010), va
     reference.raster <- raster(ref.file)
   
     store.name <- paste(reference,variable,sep=".")
-    store[[store.name]]$spatial.sd <- c(cdo.spatSd(ref.file,period), cdo.spatSd(ref.file,period,seasonal=T))
-    store[[store.name]]$mean <- c(cdo.mean(ref.file,period), cdo.mean(ref.file,period,seasonal=T))
+    store[[store.name]]$spatial.sd <- c(cdo.spatSd(ref.file,period), cdo.spatSd(ref.file,period,monthly=T))
+    store[[store.name]]$mean <- c(cdo.mean(ref.file,period), cdo.mean(ref.file,period,monthly=T))
   
     #for(i in 1:length(region.id)) {
     #  getPolCoords(i,shape=shape,destfile=mask)
-    #  store[[ store.name ]][[ srex.regions[i] ]]$spatial.sd <- c(cdo.spatSd(ref.file,period,mask=mask), cdo.spatSd(ref.file,period,mask=mask,seasonal=T))
-    #  store[[ store.name ]][[ srex.regions[i] ]]$mean <- c(cdo.mean(ref.file,period,mask=mask), cdo.mean(ref.file,period,mask=mask,seasonal=T))
+    #  store[[ store.name ]][[ srex.regions[i] ]]$spatial.sd <- c(cdo.spatSd(ref.file,period,mask=mask), cdo.spatSd(ref.file,period,mask=mask,monthly=T))
+    #  store[[ store.name ]][[ srex.regions[i] ]]$mean <- c(cdo.mean(ref.file,period,mask=mask), cdo.mean(ref.file,period,mask=mask,monthly=T))
     #}
   }
   
@@ -142,14 +142,14 @@ calculate.statistics.cordex <- function(reference="era", period=c(1981,2010), va
     X <- getRCMs(select=i,varid=variable)
     gcm.file <- X[[1]]$filename
     store.name <- paste("gcm",i,sep=".")
-    store[[store.name]]$spatial.sd <- c(cdo.spatSd(gcm.file,period),cdo.spatSd(gcm.file,period,seasonal=T))
-    store[[store.name]]$mean <- c(cdo.mean(gcm.file,period),cdo.mean(gcm.file,period,seasonal=T))
-    if(!is.null(reference)) store[[store.name]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period),cdo.gridcor(gcm.file,ref.file,period,seasonal=T))
+    store[[store.name]]$spatial.sd <- c(cdo.spatSd(gcm.file,period),cdo.spatSd(gcm.file,period,monthly=T))
+    store[[store.name]]$mean <- c(cdo.mean(gcm.file,period),cdo.mean(gcm.file,period,monthly=T))
+    if(!is.null(reference)) store[[store.name]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period),cdo.gridcor(gcm.file,ref.file,period,monthly=T))
     #for(j in 1:length(srex.regions)){
     #  getPolCoords(j,shape=shape,destfile=mask)
-    #  store[[store.name]][[srex.regions[j]]]$spatial.sd <- c(cdo.spatSd(gcm.file,period,mask=mask), cdo.spatSd(gcm.file,period,mask=mask,seasonal=T))
-    #  store[[store.name]][[srex.regions[j]]]$mean <- c(cdo.mean(gcm.file,period,mask=mask), cdo.mean(gcm.file,period,mask=mask,seasonal=T))
-    #  if(!is.null(reference)) store[[store.name]][[srex.regions[j]]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period,mask=mask), cdo.gridcor(gcm.file,ref.file,period,mask=mask,seasonal=T))
+    #  store[[store.name]][[srex.regions[j]]]$spatial.sd <- c(cdo.spatSd(gcm.file,period,mask=mask), cdo.spatSd(gcm.file,period,mask=mask,monthly=T))
+    #  store[[store.name]][[srex.regions[j]]]$mean <- c(cdo.mean(gcm.file,period,mask=mask), cdo.mean(gcm.file,period,mask=mask,monthly=T))
+    #  if(!is.null(reference)) store[[store.name]][[srex.regions[j]]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period,mask=mask), cdo.gridcor(gcm.file,ref.file,period,mask=mask,monthly=T))
     #}
     save(file=store.file,store)
     gc()
@@ -160,7 +160,7 @@ calculate.statistics.cordex <- function(reference="era", period=c(1981,2010), va
 
 opt <- list(verbose=TRUE,reference="era",it=c(1981,2010),variable="tas",
             nfiles=9,continue=FALSE,mask="coords.txt",help=FALSE)
-for (varid in c("pr","tas")) {
+for (varid in c("tas","pr")) {
   calculate.statistics.cmip(reference=opt$reference, period=opt$it, variable=varid, 
                             nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
                             mask=opt$mask)
