@@ -71,7 +71,7 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
     store[[store.name]]$mean <- c(cdo.mean(gcm.file,period),cdo.mean(gcm.file,period,seasonal=T))
     if(!is.null(reference)) store[[store.name]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period),cdo.gridcor(gcm.file,ref.file,period,seasonal=T))
     for(j in 1:length(srex.regions)){
-      getPolCoords(i,shape=shape,destfile=mask)
+      getPolCoords(j,shape=shape,destfile=mask)
       store[[store.name]][[srex.regions[j]]]$spatial.sd <- c(cdo.spatSd(gcm.file,period,mask=mask), cdo.spatSd(gcm.file,period,mask=mask,seasonal=T))
       store[[store.name]][[srex.regions[j]]]$mean <- c(cdo.mean(gcm.file,period,mask=mask), cdo.mean(gcm.file,period,mask=mask,seasonal=T))
       if(!is.null(reference)) store[[store.name]][[srex.regions[j]]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period,mask=mask), cdo.gridcor(gcm.file,ref.file,period,mask=mask,seasonal=T))
@@ -80,21 +80,21 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
     gc()
     if(i==ngcm) return(store)
   }
-  attribute(store,"variable") <- variable
+  attr(store,"variable") <- variable
   if(variable=="pr") {
     if(max(abs(store[[1]]$mean),na.rm=TRUE)<0.001) {
-      attribute(store,"unit") <- "kg m-2 s-1"
+      attr(store,"unit") <- "kg m-2 s-1"
     } else {
-      attribute(store,"unit") <- "mm/day"
+      attr(store,"unit") <- "mm/day"
     }
   } else if (variable=="tas") {
     if(max(abs(store[[1]]$mean),na.rm=TRUE)>273) {
-      attribute(store,"unit") <- "K"
+      attr(store,"unit") <- "K"
     } else {
-      attribute(store,"unit") <- "degrees~Celsius"
+      attr(store,"unit") <- "degrees~Celsius"
     }
   }
-  save(file=store.file,store)  
+  save(file=store.file,store)
   return(store)
 }
 
@@ -146,7 +146,7 @@ calculate.statistics.cordex <- function(reference="era", period=c(1981,2010), va
     store[[store.name]]$mean <- c(cdo.mean(gcm.file,period),cdo.mean(gcm.file,period,seasonal=T))
     if(!is.null(reference)) store[[store.name]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period),cdo.gridcor(gcm.file,ref.file,period,seasonal=T))
     #for(j in 1:length(srex.regions)){
-    #  getPolCoords(i,shape=shape,destfile=mask)
+    #  getPolCoords(j,shape=shape,destfile=mask)
     #  store[[store.name]][[srex.regions[j]]]$spatial.sd <- c(cdo.spatSd(gcm.file,period,mask=mask), cdo.spatSd(gcm.file,period,mask=mask,seasonal=T))
     #  store[[store.name]][[srex.regions[j]]]$mean <- c(cdo.mean(gcm.file,period,mask=mask), cdo.mean(gcm.file,period,mask=mask,seasonal=T))
     #  if(!is.null(reference)) store[[store.name]][[srex.regions[j]]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period,mask=mask), cdo.gridcor(gcm.file,ref.file,period,mask=mask,seasonal=T))
@@ -160,12 +160,11 @@ calculate.statistics.cordex <- function(reference="era", period=c(1981,2010), va
 
 opt <- list(verbose=TRUE,reference="era",it=c(1981,2010),variable="tas",
             nfiles=9,continue=FALSE,mask="coords.txt",help=FALSE)
-
-for (varid in c("tas","pr")) {
+for (varid in c("pr","tas")) {
   calculate.statistics.cmip(reference=opt$reference, period=opt$it, variable=varid, 
                             nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
                             mask=opt$mask)
-  for (it in list(c(2071,2100),c(2021,2050))) {
+  for (it in list(c(2021,2050),c(2071,2100))) {
     calculate.statistics.cmip(reference=NULL, period=it, variable=varid, 
                               nfiles=opt$nfiles, continue=opt$continue, verbose=opt$verbose, 
                               mask=opt$mask)
