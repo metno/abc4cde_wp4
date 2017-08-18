@@ -30,25 +30,46 @@ shinyServer(function(input, output) {
   
   output$dtdpr <- renderPlot({
     season <- switch(tolower(as.character(input$season)),
-                     'annual mean'='ann','winter'='djf','spring'='mam',
-                     'summer'='jja','autumn'='son')
+                     'annual mean'='ann',
+                     'winter'=c('dec','jan','feb'),
+                     'spring'=c('mar','apr','may'),
+                     'summer'=c('jun','jul','aug'),
+                     'autumn'=c('sep','oct','nov'))
+                     #'annual mean'='ann','winter'='djf','spring'='mam',
+                     #'summer'='jja','autumn'='son')
     period <- switch(tolower(as.character(input$period)),
                      "far future (2071-2100)"='ff',
                      "near future (2021-2050)"='nf')
     gcms <- names(stats$tas$ff)
     if(tolower(input$region)=="global") {
       coord <- list(lon=c(-180,180),lat=c(-90,90))
-      dtas <- sapply(gcms, function(gcm) stats$tas[[period]][[gcm]][["mean"]][[season]] - 
-                       stats$tas$present[[gcm]][["mean"]][[season]]) 
-      dpr <- sapply(gcms, function(gcm) stats$pr[[period]][[gcm]][["mean"]][[season]] - 
-                      stats$pr$present[[gcm]][["mean"]][[season]])
+      dtas <- sapply(gcms, function(gcm) mean(sapply(season, function(s)
+                       stats$tas[[period]][[gcm]][["mean"]][[s]])) - 
+                       mean(sapply(season, function(s)
+                       stats$tas$present[[gcm]][["mean"]][[s]])))
+      dpr <- sapply(gcms, function(gcm) mean(sapply(season, function(s)
+                       stats$pr[[period]][[gcm]][["mean"]][[s]])) - 
+                       mean(sapply(season, function(s)
+                       stats$pr$present[[gcm]][["mean"]][[s]])))
+      #dtas <- sapply(gcms, function(gcm) stats$tas[[period]][[gcm]][["mean"]][[season]] - 
+      #                 stats$tas$present[[gcm]][["mean"]][[season]]) 
+      #dpr <- sapply(gcms, function(gcm) stats$pr[[period]][[gcm]][["mean"]][[season]] - 
+      #                stats$pr$present[[gcm]][["mean"]][[season]])
     } else {
       i.srex <- which(srex$name==input$region)
       region <- srex$label[i.srex]
-      dtas <- sapply(gcms, function(gcm) stats$tas[[period]][[gcm]][[region]][["mean"]][[season]] - 
-                                         stats$tas$present[[gcm]][[region]][["mean"]][[season]]) 
-      dpr <- sapply(gcms, function(gcm) stats$pr[[period]][[gcm]][[region]][["mean"]][[season]] - 
-                                        stats$pr$present[[gcm]][[region]][["mean"]][[season]])
+      dtas <- sapply(gcms, function(gcm) mean(sapply(season, function(s)
+                       stats$tas[[period]][[gcm]][[region]][["mean"]][[s]])) - 
+                       mean(sapply(season, function(s) 
+                       stats$tas$present[[gcm]][[region]][["mean"]][[s]])))
+      dpr <- sapply(gcms, function(gcm) mean(sapply(season, function(s)
+                       stats$pr[[period]][[gcm]][[region]][["mean"]][[s]])) - 
+                       mean(sapply(season, function(s) 
+                       stats$pr$present[[gcm]][[region]][["mean"]][[s]])))
+      #dtas <- sapply(gcms, function(gcm) stats$tas[[period]][[gcm]][[region]][["mean"]][[season]] - 
+      #                stats$tas$present[[gcm]][[region]][["mean"]][[season]])
+      #dpr <- sapply(gcms, function(gcm) stats$pr[[period]][[gcm]][[region]][["mean"]][[season]] - 
+      #                                  stats$pr$present[[gcm]][[region]][["mean"]][[season]])
     }
     im <- as.numeric(gsub(":.*","",input$gcms))
     scatterplot(dtas,dpr*(60*60*24),ix=NULL,xlim=input$tlim,ylim=input$plim,
