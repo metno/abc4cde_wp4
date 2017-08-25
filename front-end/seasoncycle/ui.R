@@ -1,7 +1,5 @@
 
 library(shiny)
-if (!require("DT")) install.packages('DT')
-library(DT)
 library(DECM)
 
 #data("statistics.cmip.tas.2071-2100")
