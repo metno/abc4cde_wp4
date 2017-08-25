@@ -13,7 +13,7 @@ navbarPage(title = 'Projections of temperature and precipitation',
            id = 'x0',
            header=img(src="banner_c3s.png", 
                       style="width:800px; float:left; margin-bottom:50px; margin-left:20px"),
-           tabPanel('Scatterplot of climate change', 
+           tabPanel('Seasonal cycles', 
                     column(3,
                            selectInput("variable",
                                        label = "Meteorological variable",
@@ -57,6 +57,7 @@ navbarPage(title = 'Projections of temperature and precipitation',
                                             "Arctic","Pacific Islands region[2]",
                                             "Southern Topical Pacific","Pacific Islands region[3]",
                                             "West Indian Ocean")),
-                                plotOutput("map"))
+                                plotOutput("map")
+			)
            )
 )

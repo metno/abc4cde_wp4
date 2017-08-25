@@ -1,7 +1,6 @@
 
 library(shiny)
 library(DECM)
-library(DT)
 source("helpers.R")
 
 ## Load statistics calculated with script 'calculate_statistics.R'
@@ -64,11 +63,6 @@ shinyServer(function(input, output) {
     } else {
       ylim[2] <- max(c(unlist(x),ref)) + 0.15*diff(range(c(unlist(x),ref)))
     }
-    #if(period=="present") {
-    #  ylim <- range(c(unlist(x),ref)) + c(-3,1)*0.15*diff(range(c(unlist(x),ref)))
-    #} else {
-    #  ylim <- range(unlist(x)) + c(-3,1)*0.15*diff(range(unlist(x)))
-    #}
       
     im <- as.numeric(gsub(":.*","",input$gcms))
     par(xpd = T, mar = par()$mar + c(4,0,0,0))
@@ -90,7 +84,7 @@ shinyServer(function(input, output) {
              legend=c("GCMs","Selected GCMs"),
              lty=c(1,1),col=c("grey80","blue"),cex=0.85)
     }
-  }, width=function(){450}, height=function(){450}*0.9)
+  }, width=450, height=450*0.9)
   
   output$map <- renderPlot({
     if(tolower(input$region)=="global") {
@@ -104,13 +98,12 @@ shinyServer(function(input, output) {
     plot(geoborders$x,geoborders$y,col="grey30",type="l",lwd=0.5,
          xlim=c(-180,180),ylim=c(-90,90),
          xlab="Longitude",ylab="Latitude",xaxt="n",yaxt="n")
-    #lines(attr(geoborders,'borders')$x,attr(geoborders,'borders')$y,col="grey30")
     par(xaxt="s",yaxt="s",las=1,col.axis='grey',col.lab='grey20',
         cex.lab=0.7,cex.axis=0.7)
     axis(3,at=pretty(par("xaxp")[1:2],n=5),col='grey50')
     axis(2,at=pretty(par("yaxp")[1:2],n=5),col='grey50')
     grid()
     lines(region$lon,region$lat,col="blue",lwd=1.5,lty=1)
-  }, width=function(){200},height=function(){200}*0.6)#width=250, height=175)
+  }, width=200,height=200*0.6)#width=250, height=175)
   
 })
