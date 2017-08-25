@@ -1,7 +1,6 @@
 
 library(shiny)
 library(DECM)
-library(DT)
 source("helpers.R")
 
 ## Load statistics calculated with script 'calculate_statistics.R'
@@ -78,7 +77,7 @@ shinyServer(function(input, output) {
                 show.legend=FALSE,im=im,
                 legend=seq(length(dtas)),pal=NULL,#pal="cat",pch=21,
                 pch=as.character(seq(length(dtas))),cex=1.5,lwd=1.5,new=FALSE)
-  }, width=function(){450}, height=function(){450})
+  }, width=450, height=450)
   
   output$map <- renderPlot({
     if(tolower(input$region)=="global") {
@@ -99,6 +98,6 @@ shinyServer(function(input, output) {
     axis(2,at=pretty(par("yaxp")[1:2],n=5),col='grey50')
     grid()
     lines(region$lon,region$lat,col="blue",lwd=1.5,lty=1)
-  }, width=function(){200},height=function(){200}*0.6)#width=250, height=175)
+  }, width=200,height=200*0.6)#width=250, height=175)
   
 })
