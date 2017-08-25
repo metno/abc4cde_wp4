@@ -1,28 +1,6 @@
 ## helpers.R
 ## Help functions for the shiny app "dpdt"
 
-fn.switch <- function(fn="mean") {
-  if(!is.null(fn)) {
-    switch(fn,"Mean"="mean",
-           "95th percentile"="q95",
-           "5th percentile"="q5")
-  } else {
-    "mean"
-  }
-}
-
-type.switch <- function(type="Climate change far future") {
-  if(!is.null(type)) {
-    switch(type,"Climate change near future"="ccnf",
-           "Climate change far future"="ccff",
-           "Mean value present day"="mvpd",
-           "Mean value near future"="mvnf",
-           "Mean value far future"="mvff")
-  } else {
-    "ccff"
-  }
-}
-
 regions <- function(type=c("srex","prudence"),region=NULL) {
   if(is.null(type) | length(type)>1) region <- NULL
   if(is.null(type) | "srex" %in% tolower(type)) {
@@ -45,10 +23,6 @@ regions <- function(type=c("srex","prudence"),region=NULL) {
               usage=as.character(x$USAGE[ivec]),
               type=rep("srex",length(ivec)),
               coords=lapply(ivec, function(i) t(coordinates(x@polygons[[i]]@Polygons[[1]]))))
-              #west=sapply(ivec, function(i) xmin(extent(x[i,]))),
-              #east=sapply(ivec, function(i) xmax(extent(x[i,]))),
-              #south=sapply(ivec, function(i) ymin(extent(x[i,]))),
-              #north=sapply(ivec, function(i) ymax(extent(x[i,]))))
   } else {
     y <- NULL
   }
@@ -77,10 +51,6 @@ regions <- function(type=c("srex","prudence"),region=NULL) {
                     t(matrix(sapply(c(4,5,5,4,4,6,6,7,7,6), 
                              function(j) factor2numeric(x[i,j])),
                              nrow=5,ncol=2))))
-                  #west=as.numeric(x[2:nrow(x),4]),
-                  #east=as.numeric(x[2:nrow(x),5]),
-                  #south=as.numeric(x[2:nrow(x),6]),
-                  #north=as.numeric(x[2:nrow(x),7]))
     if(is.null(y)) {
       y <- prudence 
     } else {

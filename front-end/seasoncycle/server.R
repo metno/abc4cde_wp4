@@ -1,7 +1,6 @@
 
 library(shiny)
 library(DECM)
-library(DT)
 source("helpers.R")
 
 ## Load statistics calculated with script 'calculate_statistics.R'
