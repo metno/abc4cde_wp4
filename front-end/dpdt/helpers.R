@@ -4,8 +4,8 @@
 regions <- function(type=c("srex","prudence"),region=NULL) {
   if(is.null(type) | length(type)>1) region <- NULL
   if(is.null(type) | "srex" %in% tolower(type)) {
-    f <- find.file("referenceRegions.shp")
-    x <- get.shapefile(f[1],with.path=TRUE)
+    f <- "referenceRegions.shp"#find.file("referenceRegions.shp")
+    x <- get.shapefile(f,with.path=TRUE)
     ivec <- 1:nrow(x)
     if(!is.null(region)) {
       if(is.numeric(region)) {
@@ -31,7 +31,7 @@ regions <- function(type=c("srex","prudence"),region=NULL) {
     y <- NULL
   }
   if(is.null(type) | "prudence" %in% tolower(type)) {
-    f <- find.file("RegionSpecifications.csv")
+    f <- "RegionSpecifications.csv"#find.file("RegionSpecifications.csv")
     x <- read.table(f,sep=",")
     ivec <- 2:nrow(x)
     names <- as.character(x[2:nrow(x),1])
