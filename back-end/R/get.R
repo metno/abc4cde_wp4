@@ -74,7 +74,9 @@ getERA <- function(variable.name,start=1979,end=2016,griddes="cmip_1.25deg_to_2.
     if(verbose) print("variable: precipitation")
     varID<- "228.128"
     stream <- "mdfa"
-    steps <- "12-24/24-36" # Select the 24 and 36h 12-hour long forecast in order to reduce the spin-up effect.
+    #steps <- "12-24/24-36" # Select the 24 and 36h 12-hour long forecast in order to reduce the spin-up effect.
+    # Step 0-12 is better - closer to observations. Spin-up effect should not be an issue with forecasts.
+    steps <- "0-12"
     type <- "fc"
     commands <- c("-f","nc","-copy","-monsum","-remapcon","-chname")
     input <- c("","","","",griddes,"2t,tas")
