@@ -49,7 +49,7 @@ shinyServer(function(input, output) {
     }
     if(var=="pr") {
       x <- lapply(x, function(y) y*60*60*24)
-      ref <- ref*1E3
+      ref <- ref*1E3 ## m to mm
     }
     #if(var=="pr") ref <- NULL
     ylim <- c(NULL,NULL)
