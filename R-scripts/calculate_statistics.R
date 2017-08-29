@@ -32,17 +32,23 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
     store.name <- paste(reference,variable,sep=".")
     store[[store.name]]$spatial.sd <- c(cdo.spatSd(ref.file,period), cdo.spatSd(ref.file,period,monthly=TRUE))
     store[[store.name]]$mean <- c(cdo.mean(ref.file,period), cdo.mean(ref.file,period,monthly=TRUE))
-    if(variable=="pr") {
-      if(max(abs(store[[store.name]]$mean),na.rm=TRUE)<0.001) {
-        units <- "kg m-2 s-1"
-      } else {
-        units <- "mm/day"
-      }
-    } else if (variable=="tas") {
+    if (variable=="tas") {
       if(max(abs(store[[store.name]]$mean),na.rm=TRUE)>273) {
         units <- "K"
       } else {
         units <- "degrees~Celsius"
+      }
+    } else if(variable=="pr") {
+      if(!is.null(ref.file)) {
+        ncid <- nc_open(ref.file)
+        units <- ncid$var[[1]]$units
+        nc_close(ncid)
+      } else {
+        if(max(abs(store[[store.name]]$mean),na.rm=TRUE)<0.001) {
+          units <- "kg m-2 s-1"
+        } else {
+          units <- "mm/day"
+        }
       }
     }
     
@@ -77,23 +83,42 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
       if(!is.null(reference)) store[[store.name]][[srex.regions[j]]]$corr <- c(cdo.gridcor(gcm.file,ref.file,period,mask=mask), cdo.gridcor(gcm.file,ref.file,period,mask=mask,monthly=T))
     }
     save(file=store.file,store)
+    if (variable=="tas") {
+      if(max(abs(store[[store.name]]$mean),na.rm=TRUE)>273) {
+        units <- c(units,"K")
+      } else {
+        units <- c(units,"degrees~Celsius")
+      }
+    } else if(variable=="pr") {
+      if(!is.null(gcm.file)) {
+        ncid <- nc_open(gcm.file)
+        units <- c(units,ncid$var[[1]]$units)
+        nc_close(ncid)
+      }# else {
+      #  if(max(abs(store[[1]]$mean),na.rm=TRUE)<0.001) {
+      #    units <- c(units,"kg m-2 s-1")
+      #  } else {
+      #    units <- c(units,"mm/day")
+      #  }
+      #}
+    }
     gc()
     if(i==ngcm) return(store)
   }
   attr(store,"variable") <- variable
-  if(variable=="pr") {
-    if(max(abs(store[[1]]$mean),na.rm=TRUE)<0.001) {
-      attr(store,"unit") <- "kg m-2 s-1"
-    } else {
-      attr(store,"unit") <- "mm/day"
-    }
-  } else if (variable=="tas") {
-    if(max(abs(store[[1]]$mean),na.rm=TRUE)>273) {
-      attr(store,"unit") <- "K"
-    } else {
-      attr(store,"unit") <- "degrees~Celsius"
-    }
-  }
+  #if(variable=="pr") {
+  #  if(max(abs(store[[1]]$mean),na.rm=TRUE)<0.001) {
+  #    attr(store,"unit") <- "kg m-2 s-1"
+  #  } else {
+  #    attr(store,"unit") <- "mm/day"
+  #  }
+  #} else if (variable=="tas") {
+  #  if(max(abs(store[[1]]$mean),na.rm=TRUE)>273) {
+  #    attr(store,"unit") <- "K"
+  #  } else {
+  #    attr(store,"unit") <- "degrees~Celsius"
+  #  }
+  #}
   save(file=store.file,store)
   return(store)
 }
