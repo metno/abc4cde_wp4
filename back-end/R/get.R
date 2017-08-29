@@ -10,7 +10,7 @@ find.file <- function(filename) {
 get.shapefile <- function(filename,with.path=FALSE){
   fullname <- filename
   if(!with.path){
-    fullname <- find.file(filename)
+    fullname <- find.file(filename)[1]
   }
   readOGR(fullname,verbose=FALSE)
 }
@@ -20,8 +20,8 @@ getReference <- function(reference,variable,verbose=FALSE) {
   if(verbose) print("getReference")
   #path <- system("echo $EXTERNAL_DATA",intern=TRUE)
   file.name <- switch(paste(reference,variable,sep="."),
-                      era.tas="era-interim_monthly_1979-2016_tas.2.5deg.nc",
-                      era.pr="era-interim_monthly_1979-2016_pr.2.5deg.nc",
+                      era.tas="era-interim_monthly_1979-2017_tas.2.5deg.nc",
+                      era.pr="era-interim_monthly_1979-2017_pr.2.5deg.nc",
                       cfsr.tas="cfsr_tmp2m_mon.nc",
                       cfsr.pr="cfsr_prate_mon.nc",
                       eobs.tas="tg_0.50deg_reg_v14.0_mon.nc",
@@ -58,7 +58,7 @@ python.getEra <- function(start,end,variable,steps,type,stream,outfile,verbose=F
 #The use of this function requires that the ECMWF key and python libraries are installed on the machine.
 #See instructions in https://software.ecmwf.int/wiki/display/WEBAPI/Access+ECMWF+Public+Datasets
 #The function also requires that cdo is installed on the operating computer.
-getERA <- function(variable.name,start=1979,end=2016,griddes="cmip_1.25deg_to_2.5deg.txt",
+getERA <- function(variable.name,start=1979,end=2017,griddes="cmip_1.25deg_to_2.5deg.txt",
                    destfile=NULL,force=FALSE,verbose=FALSE){
   if(verbose) print("getERA")
   griddes <- find.file(griddes)[1]
@@ -74,11 +74,10 @@ getERA <- function(variable.name,start=1979,end=2016,griddes="cmip_1.25deg_to_2.
     if(verbose) print("variable: precipitation")
     varID<- "228.128"
     stream <- "mdfa"
-    #steps <- "12-24/24-36" # Select the 24 and 36h 12-hour long forecast in order to reduce the spin-up effect.
-    # Step 0-12 is better - closer to observations. Spin-up effect should not be an issue with forecasts.
+    # Step 0-12 is recommended for ERAinterim precipitation. Spin-up effect should not be an issue with ERAinterim forecasts.
     steps <- "0-12"
     type <- "fc"
-    commands <- c("-f","nc","-copy","-monsum","-remapcon","-chname")
+    commands <- c("-f","nc","-copy","-monmean","-remapcon","-chname")#"-monsum","-remapcon","-chname")
     input <- c("","","","",griddes,"2t,tas")
   }
   if(is.null(destfile)) destfile <- paste("era-interim_monthly_",paste(start,end,sep="-"),"_",variable.name,".grib",sep="")
