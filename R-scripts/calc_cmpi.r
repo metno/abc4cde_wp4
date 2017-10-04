@@ -1,6 +1,7 @@
 library(DECM)
+source("/home/ubuntu/abc4cde_wp4/back-end/R/") #Did not manage to install the latesr version of DECM!
 
-#Calc.mon.weights
+#Calculate weights for the weighted average of rms, assuming monthly time step.
 calc.mon.weights <- function(lon,lat){
   
   weights <- array(NA,dim=c(12,length(lon),length(lat)))
