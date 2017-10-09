@@ -38,7 +38,6 @@ sourcePrototypeFile <- function(file,current.path){
 current_path <- get_scriptpath()
 setwd(current_path)
 sourcePrototypeFile("cds.R",current_path)
-
 suppressPackageStartupMessages({
   require(optparse)
   require(esd)
@@ -109,7 +108,7 @@ calculate.statistics.cmip <- function(reference="era", period=c(1981,2010), vari
   }
   
   for(i in start:end){
-    gcm.file <- get.name(i,variable,path=Sys.getenv("EXTERNAL_DATA"))
+    gcm.file <- get.name(i,variable)
     if(!file.exists(gcm.file)) download.file(cmip5.urls(i,variable), destfile=paste(Sys.getenv("EXTERNAL_DATA"),gcm.file,sep="/"))
     store.name <- paste("gcm",i,sep=".")
     store[[store.name]]$spatial.sd <- c(cdo.spatSd(gcm.file,period),cdo.spatSd(gcm.file,period,seasonal=T))

@@ -2,21 +2,9 @@
 ## Rasmus.Benestad@met.no  Oslo, Norway, 2017-02-14
 ##
 
-#Helper function to find files linux environment (add Windows counterpart)
-find.file <- function(filename,path=NULL){
-  if(is.null(path))path="$HOME"
-  command <- paste("find -L ",path," -name",filename,sep=" ")
-  fullpath <- system(command,intern=T)
-  if(length(fullpath)==0)return(FALSE)
-  return(fullpath)
-}
-
-#apply mask to a zoo object by setting values outside the mask to NA
-mask.zoo <- function(zoo.object,mask){
-  mask <- flip(mask,direction='y')
-  zoo.object[,which(is.na(getValues(mask)))] <- NA
-  return(zoo.object)
-}
+require(esd) ## This code builds on the esd package: https://github.com/metno/esd
+require(raster) 
+require(rgdal)
 
 #Search and read a shapefile
 get.shapefile <- function(filename=NULL,with.path=F){
@@ -176,6 +164,310 @@ getCORDEX <- function(variable="pr",path.out="/home/ubuntu/Data1/Data/CORDEX_ful
   }
 }
 
+#---------------------------
+#GetReference
+getReference <- function(reference,variable){
+  path <- system("echo $EXTERNAL_DATA",intern=T)
+  file.name <- switch(paste(reference,variable,sep="."),
+                      era.tas="era-interim_monthly_1979-2016_tas.2.5deg.nc",
+                      era.pr="era-interim_monthly_1979-2016_pr.2.5deg.nc",
+                      cfsr.tas="cfsr_tmp2m_mon.nc",
+                      cfsr.pr="cfsr_prate_mon.nc",
+                      eobs.tas="tg_0.50deg_reg_v14.0_mon.nc",
+                      eobs.pr="rr_0.50deg_reg_v14.0_mon.nc")
+  invisible(paste(path,file.name,sep="/"))
+}
+
+#---------------------------
+#gcm.name
+get.name <- function(number,variable,is.rcm=F){
+  path <- system("echo $EXTERNAL_DATA",intern=T)
+  prefix <- "GCM"
+  if(is.rcm) prefix <- "RCM"
+  file.name <- paste(paste(prefix,number,sep=""),variable,"nc",sep=".")
+  invisible(paste(path,file.name,sep="/"))
+}
+
+#---------------------------
+#getPrudenceCoords
+getPrudenceCoords <- function(prudence,destfile="coords.txt",region){
+  i <- region
+  if(is.character(region))i <- which(prudence[,2]==region)
+  lat <- as.numeric(prudence[i,6:7])
+  lon <- as.numeric(prudence[i,4:5])
+  coords1 <- expand.grid(lon[1],lat)
+  coords2 <- expand.grid(lon[2],lat)
+  coords <- rbind(coords1,coords2[c(2,1),])
+  write(t(coords),file=destfile,ncolumns = 2)
+}
+
+#---------------------------
+#getPolCoords
+getPolCoords <- function(shape="",region,destfile="coords.txt"){
+  if(is.character(region))region <- which(as.character(shape$LAB)==region)
+  pol.coords <- coordinates(shape@polygons[[region]]@Polygons[[1]])
+  write(t(pol.coords),file=destfile,ncolumns = 2)
+}
+
+#---------------------------
+#cdo.mean
+cdo.mean <- function(model,period=c(1981,2010),mask=NULL,seasonal=F){
+  
+  commands <- c("-fldmean","-timmean","-selyear")
+  input <- c("","",paste(period,collapse="/"))
+  
+  if(!is.null(mask)){
+    commands <- append(commands,"-maskregion",after=2)
+    input <- append(input,mask,after=2) 
+  }
+  if(seasonal){
+    commands <- replace(commands,commands=="-timmean","-yseasmean")
+  }
+  
+  out.file <- "tmp.nc"
+  cdo.command(commands,input,model,out.file)
+  
+  command <- ("output")
+  input <- c("")
+  
+  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=T))
+  if(seasonal){
+    names(out) <- c("djf","mam","jja","son")
+  }else{
+    names(out) <- "ann"
+  } 
+  
+  if(out>200)out <- out-273.15
+  system(paste("rm",out.file,sep=" "))
+  invisible(out)
+}
+
+#---------------------------
+#cdo.timeSd
+cdo.timeSd <- function(model,period=c(1981,2010),mask=NULL,seasonal=F){
+  
+  commands <- c("-timstd","-fldmean","-ymean","-selyear")
+  input <- c("","",paste(period,collapse="/"))
+  
+  if(!is.null(mask)){
+    commands <- append(commands,"-maskregion",after=3)
+    input <- append(input,mask,after=3) 
+  }
+  if(seasonal){
+    commands <- replace(commands,commands=="-ymean","-seasmean")
+  }
+  
+  out.file <- "tmp.nc"
+  cdo.command(commands,input,model,out.file)
+  
+  command <- ("output")
+  input <- c("")
+  
+  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=T))
+  if(seasonal){
+    names(out) <- c("djf","mam","jja","son")
+  }else{
+    names(out) <- "ann"
+  }
+  system(paste("rm",out.file,sep=" "))
+  invisible(out)
+}
+
+#---------------------------
+#cdo.spatSd
+cdo.spatSd <- function(model,period=c(1981,2010),mask=NULL,seasonal=F){
+  
+  commands <- c("-fldstd","-timmean","-selyear")
+  input <- c("","",paste(period,collapse="/"))
+  
+  if(!is.null(mask)){
+    commands <- append(commands,"-maskregion",after=2)
+    input <- append(input,mask,after=2) 
+  }
+  if(seasonal){
+    commands <- replace(commands,commands=="-timmean","-yseasmean")
+  }
+  
+  out.file <- "tmp.nc"
+  cdo.command(commands,input,model,out.file)
+  
+  command <- ("output")
+  input <- c("")
+  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=T))
+  if(seasonal){
+    names(out) <- c("djf","mam","jja","son")
+  }else{
+    names(out) <- "ann"
+  }
+  system("rm tmp.nc")
+  invisible(out)
+}
+
+#---------------------------
+#cdo.gridcor
+cdo.gridcor <- function(model.file,reference.file,period=c(1981,2010),mask=NULL,seasonal=F){
+  
+  commands <- c("-timavg","-selyear")
+  input <- c("",paste(period,collapse="/"))
+  
+  if(!is.null(mask)){
+    commands <- append(commands,"-maskregion",after=2)
+    input <- append(input,mask,after=2) 
+  }
+  if(seasonal){
+    commands <- replace(commands,commands=="-timavg","-yseasavg")
+  }
+  
+  out.file <- "tmp.nc"
+  cdo.command(commands,input,model.file,out.file)
+  
+  out.file <- "tmp2.nc"
+  cdo.command(commands,input,reference.file,out.file)
+  
+  commands <- c("fldcor")
+  input <- c("")
+  in.file <- c("tmp.nc tmp2.nc")
+  out.file <- "tmp_cor.nc"
+  cdo.command(commands,input,in.file,out.file)
+  
+  command <- ("output")
+  input <- c("")
+  out <- as.numeric(cdo.command(command,input,out.file,NULL,intern=T))
+  if(seasonal){
+    names(out) <- c("djf","mam","jja","son")
+  }else{
+    names(out) <- "ann"
+  }
+  system("rm tmp.nc tmp2.nc tmp_cor.nc")
+  invisible(out)
+}
+
+
+#Helper function to find files linux environment (add Windows counterpart)
+find.file <- function(filename){
+  command <- paste("find -L $HOME -name",filename,sep=" ")
+  fullpath <- system(command,intern=T)
+  if(length(fullpath)==0)return(FALSE)
+  return(fullpath)
+}
+
+#apply mask to a zoo object by setting values outside the mask to NA
+mask.zoo <- function(zoo.object,mask){
+  mask <- flip(mask,direction='y')
+  zoo.object[,which(is.na(getValues(mask)))] <- NA
+  return(zoo.object)
+}
+
+#Search and read a shapefile
+get.shapefile <- function(filename=NULL,with.path=F){
+  fullname <- filename
+  if(!with.path){
+    fullname <- find.file(filename)
+  }
+  readOGR(fullname,verbose=F)
+}
+
+#Apply a set of cdo commands on a grib/netcdf file.
+#Several commands can be piped.
+cdo.command <- function(commands,input,infile,outfile,intern=F){
+  cdo.coms <- array()
+  separators <- array(" ",dim=length(commands))
+  separators[which(is.na(match(input,"")))] <- ","
+  for(i in 1:length(separators)){
+    cdo.coms[i]  <- paste(commands[i],input[i],sep=separators[i])
+  }
+  system.command <- paste("cdo",paste(cdo.coms,collapse=" "),infile,outfile,sep=" ")
+
+  if(intern){
+    output <- system(system.command,wait=T,intern=T)
+    return(output)
+  }else{
+    system(system.command,wait=T)
+  }
+}
+
+#Unzip a gz package
+gunzip <- function(filename){
+  system.command <- paste("gunzip",filename)
+  system(system.command,wait=T)
+}
+
+#Get grid boxes belonging to a SREX region and calculate some basic statistics for it.
+get.srex.region <- function(destfile,region=NULL,print.srex=F,verbose=F){ 
+  home <- system("echo $HOME",intern=T)
+  shape <-  get.shapefile("referenceRegions.shp")
+  X <- retrieve(destfile,lon=NULL,lat=NULL,verbose=verbose)
+  srex <- list()
+  if(is.null(region)){
+    for (i in 1:length(levels(shape$LAB))){
+      polygon <- shape[i,]
+      mask <- gen.mask.srex(destfile=destfile, mask=polygon, ind=F, inverse=F, mask.values=1)
+      if(verbose){
+        if(i==1){
+          plot(shape)
+        }
+        plot.mask <- mask
+        extent(plot.mask) <- c(-180,180,-90,90)
+        projection(plot.mask) <- projection(shape)
+        plot(plot.mask,col=rainbow(100, alpha=0.35)[sample(1:100,1)],legend=F,add=T)
+      }
+      name <- levels(shape$NAME)[i]
+      X.region <- mask.zoo(X,mask)
+      srex[[name]]$name <- name
+      srex[[name]]$label <- levels(shape$LAB)[i]
+      srex[[name]]$area.mean <- aggregate.area(X.region,FUN="mean",na.rm=T)
+      srex[[name]]$area.sd <- aggregate.area(X.region,FUN="sd",na.rm=T)
+    }  
+  }else{
+    polygon <- shape[levels(shape$LAB)==region,]
+    mask <- gen.mask.srex(destfile=destfile, mask=polygon, ind=F, inverse=F, mask.values=1)
+   if(verbose){
+      plot(shape)
+      plot.mask <- mask
+      extent(plot.mask) <- c(-180,180,-90,90)
+      projection(plot.mask) <- projection(shape)
+      plot(plot.mask,col=rainbow(100, alpha=0.35)[sample(1:100,1)],legend=F,add=T)
+   }
+    name <- levels(shape$NAME)[i]
+    X.region <- mask.zoo(X,mask)
+    srex[[name]]$name <- name
+    srex[[name]]$label <- levels(shape$LAB)[i]
+    srex[[name]]$area.mean <- aggregate.area(X.region,FUN="mean",na.rm=T)
+    srex[[name]]$area.sd <- aggregate.area(X.region,FUN="sd",na.rm=T) 
+  }
+
+  if(print.srex){
+    print("Region names in alphabetical order and the corresponding label to be used when selecting the region:")
+    print(data.frame(NAME=gsub("\\[[^\\]]*\\]", "", levels(shape$NAME), perl=TRUE),
+                        LABEL=levels(shape$LAB)))
+    return()
+  }
+  return(srex)
+}
+
+#Create a raster mask for the selected SREX sub-region from the CMIP5 netcdf file.
+gen.mask.srex <- function(destfile, mask.polygon=NULL, ind=F, inverse=F, mask.values=1){
+  print(destfile)
+  r <- raster(destfile)
+  r <- setValues(r,NA)
+  extent.r <- extent(r)
+  if(extent.r[2]==360) extent(r) <- c(-180,180,-90,90)
+  indices <- extract(r,mask.polygon,cellnumbers=T)[[1]][,1]
+  if(extent(mask.polygon)[2]>180){
+    extent(r) <- c(180,540,-90,90)
+    indices <- sort(c(indices,extract(r,mask.polygon,cellnumbers=T)[[1]][,1]))
+  }
+  if(inverse){
+    tmp <- seq(1,length(getValues(r)))
+    indices <- tmp[which(is.na(match(tmp,indices)))]
+  }
+  mask.raster <- r
+  extent(mask.raster) <- c(0,360,-90,90)
+  mask.raster[indices] <- mask.values
+  if(ind)return(indices)
+  return(mask.raster)
+}
+
 getatt <- function(fname) {
   ## Reads and extracts the attribute information in a netCDF files and stores this in a list object## 
   ## This is part of the information stored in the metadatabase
@@ -299,33 +591,23 @@ getCFSR <- function(variable="tas",destfile=NULL,lon=NULL,lat=NULL,verbose=T,gri
 
 #Get daily EOBS data and convert it to monthly averages. Version and resolution
 #selection not implemented yet.
-getEOBS <- function(variable="tas", destfile=NULL, destpath=".", resolution="0.50", version="14",lon=NULL,lat=NULL,verbose=F){
-
-  if(resolution=="0.50" & resolution=="0.25"){
-    type <- "reg"
-  }else{
-    type <- "rot"
-  }
-  url.path <- paste("http://www.ecad.eu/download/ensembles/data/Grid_",resolution,"deg_",type,sep="")
-  
+getEOBS <- function(variable="tas", destfile=NULL, resolution="0.50", version="14"){
+  url.path <- "http://www.ecad.eu/download/ensembles/data/Grid_0.50deg_reg"
   if(variable=="tas"){
-    filename <- paste("tg_",resolution,"deg_",type,"_v15.0.nc.gz",sep="")
+    filename <- "tg_0.50deg_reg_v14.0.nc.gz"
   }else if(variable=="pr"){
-    filename <- paste("rr_",resolution,"deg_",type,"_v15.0.nc.gz",sep="")
+    filename <- "rr_0.50deg_reg_v14.0.nc.gz"
   }else{
     return("Not implemented yet!")
   }
-
-  infile <- paste(destpath,filename,sep="/")
-  if(!file.exists(infile))download.file(paste(url.path,filename,sep="/"),destfile=infile)
+  if(!file.exists(filename)) download.file(paste(url.path,filename,sep="/"),destfile=filename)
+  gunzip(filename)
   filename <- sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE)
-  if(!file.exists(paste(destpath,filename,sep="/")))gunzip(infile)
-  
-  if(is.null(destfile)) destfile <- paste(paste(destpath,sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),sep="/"),"mon.nc",sep="_")
+  if(is.null(destfile)) destfile <- paste(paste(system("echo $EXTERNAL_DATA",intern=T),sub("\\.[[:alnum:]]+$", "", filename, perl=TRUE),sep="/"),"mon.nc",sep="_")
   print(destfile)
   commands <- c("-f","nc","-copy","-monavg")
   input <- c("","","","")
-  if(!file.exists(destfile)) cdo.command(commands,input,infile=paste(destpath,filename,sep="/"),outfile=destfile)
+  if(!file.exists(destfile)) cdo.command(commands,input,infile=filename,outfile=destfile)
   X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
   cid <- getatt(destfile) 
   cid$url <- paste(url.path,filename,sep="/")
@@ -344,15 +626,11 @@ getCM <- function(url=NULL,destfile='CM.nc',lon=NULL,lat=NULL,force=FALSE,verbos
   ## Retrieve the data
   if(is.null(url)) url <-
     'https://climexp.knmi.nl/CMIP5/monthly/tas/tas_Amon_ACCESS1-0_historical_000.nc'
-  if (file.exists(destfile) & !force) {
-    X <- try(retrieve(destfile,lon=lon,lat=lat,verbose=verbose))
-    if (inherits(X,"try-error")) force <- TRUE # If downloaded file is incomplete, force new download
-  }
-  if (!file.exists(destfile) | force) {
-    lok <- try(download.file(url=url, destfile=destfile))
-    if (inherits(lok,"try-error")) return()
-    X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
-  }
+  if (!file.exists(destfile)|force){
+    loc <- try(download.file(url=url, destfile=destfile))
+    if (inherits(loc,"try-error")) return()
+  } 
+  X <- retrieve(destfile,lon=lon,lat=lat,verbose=verbose)
   ## Collect information stored in the netCDF header
   cid <- getatt(destfile)
   ## Extract a time series for the area mean 
@@ -420,6 +698,107 @@ getRCMs <- function(select=1:9,varid='tas',destfile=NULL,verbose=FALSE,region=NU
   invisible(X)
 }
 
+## Compute the common EOFs for GCMs and save the results for the front-end
+commonEOFS.gcm <- function(select=1:9,varid='tas',destfile=NULL,
+                           it='annual',is=NULL,verbose=FALSE) {
+  if(verbose) print("commonEOFS.gcm")
+  if(is.null(destfile)) destfile <- paste('GCM',select,'.',varid,'.nc',sep='')
+  getGCMs(select=select,varid=varid,destfile=destfile)
+  X <- NULL
+  for (fname in destfile) {
+    if(verbose) print(paste("retrieve",fname))
+    x <- retrieve(fname,verbose=verbose)
+    if (!is.null(it)) {
+      if (tolower(it)=='annual') x <- annual(x,verbose=verbose) else
+                                 x <- subset(x,it=it,is=is,verbose=verbose)
+    }
+    if (is.null(X)) X <- x else X <- combine(X,x,verbose=verbose)
+  }
+  if(verbose) print("Calculate common EOF")
+  ceof <- EOF(X,verbose=verbose)
+  plot(ceof)
+  
+  ## Need to reformat the ceof-object to fit the set-up for the R-shiny app in the front-end.
+  if(verbose) print("Reformat the common EOF object")
+  x1 <- coredata(ceof); attributes(x1) <- NULL; dim(x1) <- dim(ceof)
+  eof <- as.eof(ceof); attr(eof,"standard.error") <- NULL
+  Z <- list(info='CMIP5 runs',eof=eof,rcm.1=zoo(x1,order.by=index(ceof)))
+  clim <- list(rcm.1=map.field(X,plot=FALSE))
+  gcmnames <- attr(ceof,'model_id')
+  gcmrip <- attr(ceof,'parent_experiment_rip')
+  for (i in 1:attr(ceof,'n.apps')) {
+    x1 <- attr(ceof,paste('appendix.',i,sep=''))
+    Z[[paste('rcm.',i+1,sep='')]] <- zoo(coredata(x1),order.by=index(x1))
+    gcmnames <- c(gcmnames,attr(x1,'model_id'))
+    gcmrip <- c(gcmrip,attr(x1,'parent_experiment_rip'))
+    clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep='')))
+  }
+  attr(Z,'mean') <- clim
+  attr(Z,'model_id') <- list(gcm=gcmnames,gcm_rip=gcmrip)
+  class(Z) <- c('dsensemble','eof','list')
+  ceof <- Z
+  save(ceof,file=paste('ceof.gcm',varid,it,'rda',sep='.'))
+  invisible(ceof)
+}
+
+## Compute the common EOFs for RCMs save the results for the front-end
+commonEOFS.rcm <- function(select=1:9,varid='tas',destfile=NULL,
+                           it='annual',is=NULL,verbose=FALSE) {
+  if(verbose) print("commonEOFS.rcm")
+  if(is.null(destfile)) destfile <- paste(rep('CM',length(select)),select,'.',varid,'.nc',sep='')
+  getRCMs(select=select,varid=varid,destfile=destfile,verbose=verbose)
+  X <- NULL
+  for (fname in destfile) {
+    if(verbose) print(paste("retrieve",fname))
+    x <- retrieve(fname)
+    if (!is.null(it)) {
+      if (tolower(it)=='annual') x <- annual(x,verbose=verbose) else
+        x <- subset(x,it=it,is=is,verbose=verbose)
+    }
+    if (is.null(X)) X <- x else X <- combine(X,x,verbose=verbose)
+  }
+  if(verbose) print("Calculate common EOF")
+  ceof <- EOF(X,verbose=verbose)
+  plot(ceof)
+  
+  ## Need to reformat the ceof-object to fit the set-up for the R-shiny app in the front-end.
+  if(verbose) print("Reformat the common EOF object")
+  x1 <- coredata(ceof); attributes(x1) <- NULL; dim(x1) <- dim(ceof)
+  eof <- as.eof(ceof); attr(eof,"standard.error") <- NULL
+  Z <- list(info='CORDEX runs',eof=eof,rcm.1=zoo(x1,order.by=index(ceof)))
+  clim <- list(rcm.1=map.field(X,plot=FALSE))
+  rcmnames <- attr(ceof,'model_id')
+  gcmnames <- attr(ceof,'driving_model_id')
+  gcmrip <- attr(ceof,'driving_model_ensemble_member')
+  for (i in 1:attr(ceof,'n.apps')) {
+    xi <- attr(ceof,paste('appendix.',i,sep=''))
+    rcmnames <- c(rcmnames,attr(xi,'model_id'))
+    gcmnames <- c(gcmnames,attr(xi,'driving_model_id'))
+    gcmrip <- c(gcmrip,attr(xi,'driving_model_ensemble_member'))
+    Z[[paste('rcm.',i+1,sep='')]] <- zoo(coredata(xi),order.by=index(xi))
+    clim[[paste('rcm.',i+1,sep='')]] <- map.field(attr(X,paste('appendix.',i,sep="")))
+  }
+  attr(Z,'mean') <- clim
+  attr(Z,'model_id') <- list(rcm=rcmnames,gcm=gcmnames,gcm_rip=gcmrip)
+  class(Z) <- c('dsensemble','eof','list')
+  ceof <- Z
+  save(ceof,file=paste('ceof.rcm',varid,it,'rda',sep='.'))
+  invisible(ceof)
+}
+
+as.field.commonEOFS <- function(x,verbose=FALSE) {
+  if(verbose) print("as.field.ceof")
+  Y <- as.field(x, anomaly=TRUE, verbose=verbose)
+  Y0 <- Y
+  for(i in 1:length(Y)) {
+    clim.i <- coredata(attr(x,"mean")[[i]])
+    Y.i <- coredata(Y[[i]]) 
+    Y.i <- aperm(apply(Y.i,1,function(x) x + clim.i), c(2,1))
+    coredata(Y[[i]]) <- Y.i
+  }
+  invisible(Y)
+}
+>>>>>>> 99964596e9c9d0ff2b3e601eb3bc7838f1dbcb03
 
 cmip5.urls <- function(experiment='rcp45',varid='tas',
                        url="http://climexp.knmi.nl/CMIP5/monthly/",#path=NULL,
@@ -470,6 +849,7 @@ cordex.urls <- function(n=1,experiment='rcp45',varid='tas',url="https://climexp.
         if (irun < 10) run.id = paste("00",as.character(irun),sep="")
         else if (irun < 100) run.id = paste("0",as.character(irun),sep="")
         else run.id <- as.character(irun)
+        ## Update output filename with attributes:
         urlfile  <- paste(url,ivar,sep="")             # add var directory
         urlfile  <- paste(urlfile,ivar,sep="/")        # add v.name
         urlfile  <- paste(urlfile,"EUR-44_cordex",sep="_") # add text
@@ -484,44 +864,76 @@ cordex.urls <- function(n=1,experiment='rcp45',varid='tas',url="https://climexp.
   return(urlfiles[-1])
 }
 
-## Function for generating urls to files available on a THREDDS data server (TDS). 
-## Not sure if it works on other TDSs than the one here at metno.
-## I had problems listing and downloading files from the same location on the metno TDS  
-## and solved it by including two different base URLs, url.base and url.download. 
-## Perhaps this can be done in an easier and more elegant way.
-thredds.urls <- function(url.rel="raw/tas",pattern=".*EUR-11.*.nc",select=NULL,
-                         url.base="http://thredds.met.no/thredds/catalog/postclim/data/CORDEX-EUR11",
-                         url.download="http://thredds.met.no/thredds/dodsC/postclim/data/CORDEX-EUR11",
-                         verbose=FALSE,...) {
-  if(verbose) print("thredds.urls")
-  url <- url.base
-  if(!is.null(url.rel)) url <- paste(url,url.rel,sep="/")
-  if(is.null(url.download)) url.download <- url.base
-  if(!grepl(url,"catalog.html")) url <- paste(url,"catalog.html",sep="/")
-  continue <- TRUE
-  url.files <- NULL
-  while(continue) {
-    for(u in url) {
-      txt <- readLines(u)
-      txt <- txt[grep("href",txt)]
-      files <- txt[grep(pattern,txt)]
-      if(length(files)>0) {
-        files <- gsub(paste("'>.*",sep=""),"",files)
-        files <- gsub(paste(".*./",sep=""),"",files)
-        u.data <- gsub(url.base,url.download,u)
-        u.data <- gsub("catalog.html","",u.data)
-        url.files <- c(url.files,paste(u.data,files,sep=""))
+metaextract.cmip <- function(x=NULL, verbose=FALSE) {
+  if(verbose) print("metaextract.cmip")
+  ## argument 'x' is input from getGCMs, getRCMs, testGCM, etc
+  if (is.null(x)) x <- c(getGCMs(verbose=verbose),getRCMs(verbose=verbose))
+  
+  if(!inherits(x,"list")) x <- list(gcm.1=x)
+  gcms <- names(x)
+  n <- length(gcms)
+  
+  for (i in 1:n) {
+    xx <- x[[gcms[i]]]
+    project_id <- NA; url <- NA; filename <- NA; dim <- NA; dates <- NA
+    var <- NA; longname <- NA; vunit <- NA; vid <- NA
+    res <- NA; lon.rng <- NA; lon.unit <- NA; lat.rng <- NA; lat.unit <- NA
+    experiment_id <- NA; frequency <- NA; creation_date <- NA; tracking_id <- NA
+    gcm <- NA; gcm.rip <- NA; gcm.v <- NA; gcm.realm <- NA
+    gcm.srex.name <- NA; gcm.srex.label <- NA
+    
+    if(!is.null(xx$dim)) dim <- paste(names(xx$dim),collapse=",")
+    if(!is.null(names(xx$var))) {
+      var <- names(xx$var)#[!grepl("time",names(xx$var))]
+      if(!is.null(xx$var[[1]]$longname)) longname <- sapply(var, function(x) xx$var[[x]]$longname)
+      if(!is.null(xx$var[[1]]$units)) vunit <- sapply(var, function(x) xx$var[[x]]$units)
+      if(!is.null(xx$var[[1]]$id$id)) vid <- sapply(var, function(x) xx$var[[x]]$id$id)
+    }
+    if(!is.null(names(xx$dim))) {
+      if(!is.null(xx$dim$lat$vals)) {
+        res <- diff(xx$dim$lat$vals)[1]
+        lat.rng <- paste(range(xx$dim$lat$vals),collapse=",")
       }
-      folders <- txt[grep("Folder",txt)]
-      if(length(folders)>1) {
-        folders <- gsub(".*href='|'>.*","",folders)
-        url <- NULL
-        for(i in seq(2,length(folders))) {
-          u.i <- gsub("catalog.html",folders[i],u)
-          url <- c(url,u.i)
-        } 
-      } else {
-        continue <- FALSE
+      if(!is.null(xx$dim$lon$vals)) lon.rng <- paste(range(xx$dim$lon$vals),collapse=",")
+      if(!is.null(xx$dim$lat$units)) lat.unit <- xx$dim$lat$units
+      if(!is.null(xx$dim$lon$units)) lon.unit <- xx$dim$lon$units
+    }
+    for(mi in c("url","filename","dates","frequency")) {
+      if(!is.null(xx[[mi]])) eval(parse(text=paste(mi," <- xx$",mi,sep="")))
+    }
+    for(mi in c("project_id","experiment_id","creation_date","tracking_id")) {
+      if(!is.null(xx$model[[mi]])) eval(parse(text=paste(mi," <- xx$model$",mi,sep="")))
+    }
+    if(!is.null(xx$model$model_id)) gcm <- xx$model$model_id
+    if(!is.null(xx$model$parent_experiment_rip)) gcm.rip <- xx$model$parent_experiment_rip
+    if(!is.null(xx$model$version_number)) gcm.v <- xx$model$version_number
+    if(!is.null(xx$model$modeling_realm)) gcm.realm <- xx$model$modeling_realm
+    
+    if(!is.null(xx$model$srex)){
+      for(mi in 1:length(xx$model$srex)){
+        gcm.srex.label <- xx$model$srex[[mi]]$label
+        gcm.srex.name <- xx$model$srex[[mi]]$name
+      }
+    }
+    mx <- data.frame(project_id=project_id, url=url, filename=filename,
+                     dim=paste(dim,collapse=","), dates=dates, var=paste(var,collapse=","),
+                     longname=paste(longname,collapse=","), unit=paste(vunit,collapse=","),
+                     #var_id=paste(vid,collapse=","), 
+                     resolution=res, lon=lon.rng, lon_unit=lon.unit, lat=lat.rng, lat_unit=lat.unit,
+                     experiment_id=experiment_id, frequency=frequency, 
+                     creation_date=creation_date, #tracking_id=tracking_id,
+                     gcm=gcm, gcm_rip=gcm.rip,
+                     gcm.srex.label=gcm.srex.label, gcm.srex.name=gcm.srex.name)#, gcm_version=gcm.v, gcm_realm=gcm.realm)
+    meta <- names(mx)
+    m <- length(meta)
+    if (i==1) {
+      X <- matrix(rep("NA",n*m),n,m) ## set up a matrix
+      colnames(X) <- meta; rownames(X) <- gcms
+    }
+    for (ii in 1:m) {
+      if(!is.na(mx[[meta[ii]]])) {
+        y <- as.character(mx[[meta[ii]]])
+        X[i,ii] <- y
       }
     }
   }
