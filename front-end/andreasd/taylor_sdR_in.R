@@ -1,7 +1,7 @@
 taylor.diagram_Rsd <- function (R, sd.r, sd.f, add = FALSE, col = "red", pch = 19, pos.cor = TRUE, 
                                 xlab = "", ylab = "", main = "Taylor Diagram", show.gamma = TRUE, 
                                 ngamma = 3, gamma.col = 8, sd.arcs = 0, ref.sd = FALSE, sd.method = "sample", 
-                                grad.corr.lines = c(0.2, 0.4, 0.6, 0.8, 0.9), pcex = 1, cex.axis = 1, 
+                                grad.corr.lines = c(0.2, 0.4, 0.6, 0.8, 0.9), pcex = 3, cex.axis = 1, 
                                 normalize = FALSE, mar = c(5, 4, 6, 6), ...) 
 {
   grad.corr.full <- c(0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.95, 0.99, 
